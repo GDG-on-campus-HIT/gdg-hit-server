@@ -193,11 +193,11 @@ const recruitmentSchema = new Schema<IRecruitment>(
       previousClubs: String,
       timeCommitment: {
         type: String,
-        required: [true, "Please specify your weekly commitment"],
+        required: [false, "Please specify your weekly commitment"],
       },
       reasonToJoin: {
         type: String,
-        required: [true, "Please provide a reason for joining GDG HIT"],
+        required: [false, "Please provide a reason for joining GDG HIT"],
         maxLength: 200,
       },
     },

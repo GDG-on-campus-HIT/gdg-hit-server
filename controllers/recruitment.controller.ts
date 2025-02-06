@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
-import { RecruitmentModel, IRecruitment } from "../models/recruitment.model";
+import { RecruitmentModel } from "../models/recruitment.model";
 
 // Get all applications with filtering
 export const getApplications = CatchAsyncError(
