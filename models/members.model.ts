@@ -14,20 +14,19 @@ interface IMembers extends Document {
   bio: string;
   github_url: string;
   linkedin_url: string;
-  leader:boolean;
-
+  leader: boolean;
 }
 
 const membersSchema = new Schema<IMembers>(
   {
     name: {
-        type: String,
-        required: true,
+      type: String,
+      required: true,
     },
     profile_image: {
-        public_id: String,
-        url: String,
-      },
+      public_id: String,
+      url: String,
+    },
     department: {
       type: String,
       required: true,
@@ -53,18 +52,17 @@ const membersSchema = new Schema<IMembers>(
       required: true,
     },
     linkedin_url: {
-        type: String,
-        required: true,
-      },
-      leader:{
-        type:Boolean,
-        required: true
-      }
+      type: String,
+      required: true,
+    },
+    leader: {
+      type: Boolean,
+      required: true,
+    },
   },
   { timestamps: true }
 );
 
 const membersModel: Model<IMembers> = mongoose.model("Members", membersSchema);
-
 
 export { membersModel };
