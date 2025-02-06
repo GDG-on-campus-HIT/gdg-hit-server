@@ -27,7 +27,7 @@ export const sendCertificateMail = CatchAsyncError(
 
       const name = registration.user?.name;
       const email = registration.user?.email;
-        // const email = "deepakjamui26@gmail.com";
+      // const email = "deepakjamui26@gmail.com";
       const eventName = registration.event?.name;
       const eventDate = registration.event?.eventDate;
 
@@ -185,11 +185,9 @@ export const sendBulkCertificateMails = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { event } = req.body; // Array of registration IDs
-       const eventData = await eventModel.findById(
-        event
-      );
+      const eventData = await eventModel.findById(event);
       const registration_ids = eventData?.registrations;
-      
+
       if (!Array.isArray(registration_ids) || registration_ids.length === 0) {
         return next(new ErrorHandler("No registration IDs provided", 400));
       }
@@ -246,121 +244,7 @@ export const sendBulkCertificateMails = CatchAsyncError(
           };
 
           // Render the HTML content directly using ejs
-          const html = `<!DOCTYPE html>
-      <html>
-      <head>
-          <title>Certificate Available</title>
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-          <style>
-              /* Styles as provided in your template */
-              body {
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                  background-color: #f4f4f4;
-                  margin: 0;
-                  padding: 0;
-                  color: #333;
-              }
-              .container {
-                  max-width: 700px;
-                  margin: 30px auto;
-                  background-color: #ffffff;
-                  border-radius: 12px;
-                  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-                  overflow: hidden;
-              }
-              .header {
-                  padding: 10px;
-                  text-align: center;
-              }
-              .content {
-                  padding: 30px;
-                  line-height: 1.7;
-              }
-              .content p {
-                  margin: 15px 0;
-              }
-              .button {
-                  display: inline-block;
-                  margin: 25px 0;
-                  padding: 12px 24px;
-                  background-color: #FF6026;
-                  color: #ffffff;
-                  text-decoration: none;
-                  border-radius: 5px;
-                  font-weight: 500;
-              }
-              .button:hover {
-                  background-color: #df4811;
-              }
-              .footer {
-                  background-color: #f0f0f0;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #555;
-              }
-              .footer a {
-                  color: #1e3a8a;
-                  text-decoration: none;
-              }
-              .footer a:hover {
-                  text-decoration: underline;
-              }
-              .logo {
-                width: 100%;
-                  display: flex;
-                  justify-content: center;
-              }
-              .logo img {
-                  width: 100%;
-              }
-              .social-links {
-                  margin-top: 15px;
-              }
-              .social-links a {
-                  margin: 0 5px;
-                  text-decoration: none;
-                  color: #555;
-                  font-size: 24px;
-              }
-              .social-links a:hover {
-                  color: #FF6026;
-              }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <div class="header">
-                  <div class="logo">
-                      <img src="https://dsch.site/images/dsch-banner.png" alt="DSCH">
-                  </div>
-              </div>
-              <div class="content">
-                  <strong>Dear ${data.participantName},</strong>
-                  <p>We hope this message finds you well! Thank you for attending <strong>${data.eventName}</strong> held on <strong>${data.eventDate}</strong>. We are excited to let you know that your participation certificate is now available for download.</p>
-                  <p>To access your certificate, please follow these simple steps:</p>
-                  <ol>
-                      <li>Visit our website: <a href="https://dsch.site" style="color: #1e3a8a; text-decoration: underline;">https://dsch.site</a></li>
-                      <li>Log in using your registered credentials.</li>
-                      <li>Navigate to your profile section to download your certificate.</li>
-                  </ol>
-                  <a href="https://dsch.site/profile" class="button">Visit Your Profile</a>
-                  <p>If you experience any issues or cannot find your certificate, please contact us at <a href="mailto:datascienceclubhit@gmail.com" style="color: #1e3a8a;">datascienceclubhit@gmail.com</a> or reach out through our support team on the website.</p>
-                  <p>We appreciate your enthusiasm and active participation in <strong>${data.eventName}</strong>. We look forward to welcoming you to future events!</p>
-              </div>
-              <div class="footer">
-                  <p>Best regards,</p>
-                  <p><strong>Data Science Club HIT</strong> <br>Haldia Institute of Technology</p>
-                  <p>&copy; 2024 Data Science Club HIT. All rights reserved.</p>
-                  <div class="social-links">
-                      <a href="https://www.linkedin.com/company/datascienceclubhit/" target="_blank"><i class="fab fa-linkedin"></i></a>
-                      <a href="https://www.instagram.com/datascienceclubhit?igsh=MTV6MGY2a3piMXI0ZA%3D%3D" target="_blank"><i class="fab fa-instagram-square"></i></a>
-                  </div>
-              </div>
-          </div>
-      </body>
-      </html>
-      `;
+          const html = ``;
 
           // Send the email using the sendMail utility
           await sendMail({
@@ -396,9 +280,7 @@ export const sendBulkCertificateMails = CatchAsyncError(
   }
 );
 
-
-
-// send mail 
+// send mail
 export const sendInviteMail = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -415,7 +297,6 @@ export const sendInviteMail = CatchAsyncError(
         return next(new ErrorHandler("Registration not found", 404));
       }
 
-     
       const userId = registration.user?._id;
       const name = registration.user?.name;
       const email = registration.user?.email;
