@@ -5,6 +5,7 @@ import {
   submitApplication,
   updateApplicationStatus,
   deleteApplication,
+  getApplication,
 } from "../controllers/recruitment.controller";
 
 const recruitmentRouter = express.Router();
@@ -12,20 +13,21 @@ const recruitmentRouter = express.Router();
 recruitmentRouter.get(
   "/applications",
   isAuthenticate,
-  authorizeRoles("admin"),
+  // authorizeRoles("admin"),
   getApplications
 );
+recruitmentRouter.get("/applications/:id", isAuthenticate, getApplication);
 recruitmentRouter.post("/apply", submitApplication);
 recruitmentRouter.put(
   "/applications/:id",
   isAuthenticate,
-  authorizeRoles("admin"),
+  // authorizeRoles("admin"),
   updateApplicationStatus
 );
 recruitmentRouter.delete(
   "/applications/:id",
   isAuthenticate,
-  authorizeRoles("admin"),
+  // authorizeRoles("admin"),
   deleteApplication
 );
 
