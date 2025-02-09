@@ -34,6 +34,27 @@ export const submitApplication = CatchAsyncError(
     try {
       const { generalInfo, gdgPerspective, roleSpecific, finalInfo } = req.body;
 
+      // First check if user already exists
+      const existingApplication = await RecruitmentModel.findOne({
+        $or: [
+          { "generalInfo.email": generalInfo.email },
+          { "generalInfo.rollNumber": generalInfo.rollNumber },
+        ],
+      });
+
+      if (existingApplication) {
+        return next(
+          new ErrorHandler(
+            `Application already exists with this ${
+              existingApplication.generalInfo.email === generalInfo.email
+                ? "email"
+                : "roll number"
+            }`,
+            400
+          )
+        );
+      }
+
       // Validation for Step 1: General Information
       const requiredGeneralFields = {
         fullName: "Full name is required",
@@ -91,6 +112,15 @@ export const submitApplication = CatchAsyncError(
         application,
       });
     } catch (error: any) {
+      // Check for MongoDB duplicate key error
+      if (error.code === 11000) {
+        return next(
+          new ErrorHandler(
+            "An application with this email or roll number already exists",
+            400
+          )
+        );
+      }
       return next(new ErrorHandler(error.message, 400));
     }
   }
@@ -163,6 +193,48 @@ export const getApplication = CatchAsyncError(
       res.status(200).json({
         success: true,
         application,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+export const checkUserRegistration = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, rollNumber } = req.query;
+
+      if (!email && !rollNumber) {
+        return next(
+          new ErrorHandler("Email or Roll Number is required for checking", 400)
+        );
+      }
+
+      // Build query based on provided parameters
+      const query: any = {
+        $or: [],
+      };
+
+      if (email) {
+        query.$or.push({ "generalInfo.email": email });
+      }
+
+      if (rollNumber) {
+        query.$or.push({ "generalInfo.rollNumber": rollNumber });
+      }
+
+      const existingApplication = await RecruitmentModel.findOne(query);
+
+      res.status(200).json({
+        success: true,
+        isRegistered: !!existingApplication,
+        application: existingApplication
+          ? {
+              id: existingApplication._id,
+              status: existingApplication.status,
+              positions: existingApplication.generalInfo.positions,
+            }
+          : null,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));

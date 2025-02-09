@@ -80,9 +80,13 @@ userSchema.pre<IUser>("save", async function (next) {
 
 // signin acess and refresh token
 userSchema.methods.SignAcessToken = function () {
-  return jwt.sign({ id: this._id, role:this.role }, process.env.ACCESS_TOKEN || "", {
-    expiresIn: "5m",
-  });
+  return jwt.sign(
+    { id: this._id, role: this.role },
+    process.env.ACCESS_TOKEN || "",
+    {
+      expiresIn: "5m",
+    }
+  );
 };
 
 userSchema.methods.SignRefreshToken = function () {
