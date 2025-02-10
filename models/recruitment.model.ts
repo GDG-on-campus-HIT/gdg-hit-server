@@ -1,4 +1,5 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
+import { IUser } from "./user.model";
 
 // Step 1: General Information Interface
 interface IGeneralInfo {
@@ -73,6 +74,7 @@ interface IFinalInfo {
 
 // Main Recruitment Interface
 export interface IRecruitment extends Document {
+  user: mongoose.Types.ObjectId | IUser;
   // Step 1
   generalInfo: IGeneralInfo;
   // Step 2
@@ -97,6 +99,11 @@ export interface IRecruitment extends Document {
 
 const recruitmentSchema = new Schema<IRecruitment>(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "User reference is required"],
+    },
     // Step 1: General Information
     generalInfo: {
       fullName: {
