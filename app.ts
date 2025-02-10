@@ -65,6 +65,15 @@ app.use("/api/v1", recruitmentRouter);
 //google auth route
 app.get(
   "/auth/google",
+  (req, res, next) => {
+    const redirectTo = req.query.redirectTo || "/";
+    res.cookie("redirectTo", redirectTo, {
+      httpOnly: false,
+      secure: true,
+      sameSite: "none",
+    });
+    next();
+  },
   passport.authenticate("google", {
     session: false,
     scope: ["profile", "email"],
@@ -78,13 +87,23 @@ app.get(
     failureRedirect: `${process.env.FRONTEND_HOST}/signin`,
   }),
   function (req, res) {
-    // Successful authentication, redirect home.
     const { user, accessToken, refreshToken } = req.user as any;
 
     res.cookie("access_token", accessToken, accessTokenOptions);
-    res.cookie("refresh_token", refreshToken, refreshTokenOptions);
+    res.cookie("refresh_token", refreshToken, accessTokenOptions);
 
-    res.redirect(`${process.env.FRONTEND_HOST}`);
+    let redirectUrl = req.cookies.redirect_url || "/";
+
+    // Ensure redirect URL points to frontend (localhost:3000)
+    redirectUrl = `http://localhost:3000${decodeURIComponent(redirectUrl)}`;
+
+    res.clearCookie("redirect_url");
+    res.send(
+      `<script>
+      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, '*');
+      window.close();
+    </script>`
+    );
   }
 );
 

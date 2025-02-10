@@ -14,7 +14,6 @@ interface IMembers extends Document {
   bio: string;
   github_url: string;
   linkedin_url: string;
-  leader: boolean;
 }
 
 const membersSchema = new Schema<IMembers>(
@@ -53,10 +52,6 @@ const membersSchema = new Schema<IMembers>(
     },
     linkedin_url: {
       type: String,
-      required: true,
-    },
-    leader: {
-      type: Boolean,
       required: true,
     },
   },
