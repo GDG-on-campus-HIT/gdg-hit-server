@@ -5,7 +5,7 @@ interface IGeneralInfo {
   fullName: string;
   email: string;
   phoneNumber: string;
-  rollNumber: number;
+  rollNumber: string;
   branch: string;
   branchYear: string;
   positions: string[];
@@ -113,7 +113,7 @@ const recruitmentSchema = new Schema<IRecruitment>(
         required: [true, "Please enter your phone number"],
       },
       rollNumber: {
-        type: Number,
+        type: String,
         required: [true, "Please enter your roll number"],
       },
       branch: {
