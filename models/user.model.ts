@@ -16,6 +16,8 @@ export interface IUser extends Document {
   whatsappNo: number;
   isVerified: boolean;
   resetPasswordToken?: string;
+  linkedinProfile?: string;
+  githubProfile?: string;
   resetPasswordExpires?: Date;
   comparePassword: (password: string) => Promise<boolean>;
   SignAcessToken: () => string;
@@ -53,6 +55,8 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     classRollNo: {
       type: String,
     },
+    linkedinProfile: { type: String },
+    githubProfile: { type: String },
     department: {
       type: String,
     },

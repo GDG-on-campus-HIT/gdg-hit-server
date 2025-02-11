@@ -64,6 +64,7 @@ interface IPhotographer {
 
 // Step 4: Final Information Interface
 interface IFinalInfo {
+  github?:string;
   linkedIn?: string;
   portfolio?: string;
   previousClubs?: string;
@@ -194,6 +195,7 @@ const recruitmentSchema = new Schema<IRecruitment>(
     // Step 4: Final Information
     finalInfo: {
       linkedIn: String,
+      github:String,
       portfolio: String,
       previousClubs: String,
       timeCommitment: {

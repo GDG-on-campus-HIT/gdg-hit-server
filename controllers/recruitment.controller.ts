@@ -100,6 +100,7 @@ export const submitApplication = CatchAsyncError(
       }
 
       console.log("Checking and updating user roll number and branch...");
+      // Check and update user roll number and branch
       if (
         generalInfo.rollNumber !== user.classRollNo ||
         generalInfo.branch !== user.department
@@ -116,7 +117,21 @@ export const submitApplication = CatchAsyncError(
         );
       }
 
+      // Update user's LinkedIn and GitHub profiles
+      if (finalInfo?.linkedIn || finalInfo?.portfolio) {
+        await userModel.findByIdAndUpdate(
+          user._id,
+          {
+            $set: {
+              linkedinProfile: finalInfo.linkedIn || user.linkedinProfile,
+              githubProfile: finalInfo.portfolio || user.githubProfile,
+            },
+          },
+          { new: true }
+        );
+      }
       console.log("Validating GDG perspective...");
+      // Validate GDG perspective
       if (!gdgPerspective?.gdgPerspective || !gdgPerspective?.eventIdeas) {
         return next(
           new ErrorHandler("GDG perspective and event ideas are required", 400)
@@ -134,6 +149,7 @@ export const submitApplication = CatchAsyncError(
       }
 
       console.log("Validating role-specific information...");
+      // Validate role-specific information
       const roleSpecificData: any = {};
       generalInfo.positions.forEach((position: string) => {
         if (roleSpecific?.[position]) {
