@@ -73,6 +73,7 @@ interface IFinalInfo {
 
 // Main Recruitment Interface
 export interface IRecruitment extends Document {
+  user: mongoose.Schema.Types.ObjectId;
   // Step 1
   generalInfo: IGeneralInfo;
   // Step 2
@@ -97,6 +98,10 @@ export interface IRecruitment extends Document {
 
 const recruitmentSchema = new Schema<IRecruitment>(
   {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
     // Step 1: General Information
     generalInfo: {
       fullName: {
