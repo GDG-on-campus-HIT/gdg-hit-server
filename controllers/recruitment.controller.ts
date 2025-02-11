@@ -3,30 +3,25 @@ import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { RecruitmentModel } from "../models/recruitment.model";
 import userModel from "../models/user.model";
-import mongoose from "mongoose";
 
 // Get all applications with filtering
 export const getApplications = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { status, branch, positions } = req.query;
-      const query: any = {};
+    const { status, branch, positions } = req.query;
+    const query: any = {};
 
-      if (status) query.status = status;
-      if (branch) query["generalInfo.branch"] = branch;
-      if (positions) query["generalInfo.positions"] = { $in: [positions] };
+    if (status) query.status = status;
+    if (branch) query["generalInfo.branch"] = branch;
+    if (positions) query["generalInfo.positions"] = { $in: positions };
 
-      const applications = await RecruitmentModel.find(query).sort({
-        createdAt: -1,
-      });
+    const applications = await RecruitmentModel.find(query).sort({
+      createdAt: -1,
+    });
 
-      res.status(200).json({
-        success: true,
-        applications,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error?.message || "An error occurred", 400));
-    }
+    res.status(200).json({
+      success: true,
+      applications,
+    });
   }
 );
 
@@ -34,80 +29,63 @@ export const getApplications = CatchAsyncError(
 export const submitApplication = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { userId, generalInfo, gdgPerspective, roleSpecific, finalInfo } =
-        req.body;
+      const { generalInfo, gdgPerspective, roleSpecific, finalInfo } = req.body;
 
-      // Validate userId
-      if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-        return next(new ErrorHandler("Valid User ID is required", 400));
-      }
-
-      // Check if user exists
+      // Get user ID from authenticated request
+      const userId = (req.user as { _id: string })._id;
       const user = await userModel.findById(userId);
+
       if (!user) {
         return next(new ErrorHandler("User not found", 404));
       }
 
-      // Check if user already has an application
+      // Check for existing application
       const existingApplication = await RecruitmentModel.findOne({
-        user: userId,
+        $or: [
+          { "generalInfo.email": generalInfo.email },
+          { "generalInfo.rollNumber": generalInfo.rollNumber },
+          { userId: userId },
+        ],
       });
+
       if (existingApplication) {
         return next(
-          new ErrorHandler("You have already submitted an application", 400)
+          new ErrorHandler(
+            `Application already exists with this ${
+              existingApplication.generalInfo.email === generalInfo.email
+                ? "email"
+                : "roll number"
+            }`,
+            400
+          )
         );
       }
 
-      // Validate generalInfo fields
-      if (!generalInfo) {
-        return next(new ErrorHandler("General information is required", 400));
-      }
+      // Validate required fields
+      const requiredGeneralFields: Record<string, string> = {
+        fullName: "Full name is required",
+        email: "Email is required",
+        phoneNumber: "Phone number is required",
+        rollNumber: "Roll number is required",
+        branch: "Branch is required",
+        branchYear: "Year is required",
+        positions: "At least one position is required",
+      };
 
-      const requiredGeneralFields = [
-        "fullName",
-        "email",
-        "phoneNumber",
-        "rollNumber",
-        "branch",
-        "branchYear",
-        "positions",
-      ];
-
-      for (const field of requiredGeneralFields) {
-        if (!generalInfo[field]) {
-          return next(
-            new ErrorHandler(`${field} is required in general information`, 400)
-          );
+      for (const [key, message] of Object.entries(requiredGeneralFields)) {
+        if (!generalInfo?.[key]) {
+          return next(new ErrorHandler(message, 400));
         }
       }
 
-      if (
-        !Array.isArray(generalInfo.positions) ||
-        generalInfo.positions.length === 0
-      ) {
-        return next(
-          new ErrorHandler("At least one position must be selected", 400)
-        );
-      }
-
-      // Validate required fields in gdgPerspective
+      // Validate GDG perspective fields
       if (!gdgPerspective?.gdgPerspective || !gdgPerspective?.eventIdeas) {
         return next(
           new ErrorHandler("GDG perspective and event ideas are required", 400)
         );
       }
 
-      // Validate roleSpecific data
-      if (Object.keys(roleSpecific).length === 0) {
-        return next(
-          new ErrorHandler(
-            "At least one role-specific section is required",
-            400
-          )
-        );
-      }
-
-      // Validate finalInfo
+      // Validate final info
       if (!finalInfo?.timeCommitment || !finalInfo?.reasonToJoin) {
         return next(
           new ErrorHandler(
@@ -117,148 +95,151 @@ export const submitApplication = CatchAsyncError(
         );
       }
 
-      // Create the application
+      // Process role-specific data
+      const roleSpecificData: any = {};
+      generalInfo.positions.forEach((position: string) => {
+        if (roleSpecific?.[position]) {
+          roleSpecificData[position] = roleSpecific[position];
+        }
+      });
+
+      // Create new application with user reference
       const application = await RecruitmentModel.create({
-        user: userId,
-        generalInfo, // Include generalInfo in creation
+        userId,
+        generalInfo,
         gdgPerspective,
-        roleSpecific,
+        roleSpecific: roleSpecificData,
         finalInfo,
         status: "pending",
+        appliedAt: new Date(),
       });
 
-      // Update user's recruitmentId
-      await userModel.findByIdAndUpdate(userId, {
-        recruitmentId: application._id,
-      });
-
-      // Populate user details in response
-      const populatedApplication = await application.populate(
-        "user",
-        "name email classRollNo department"
-      );
+      // Update user model if needed
+      if (
+        generalInfo.rollNumber !== user.classRollNo ||
+        generalInfo.branch !== user.department ||
+        generalInfo.phoneNumber !== user.whatsappNo
+      ) {
+        await userModel.findByIdAndUpdate(
+          userId,
+          {
+            $set: {
+              classRollNo: generalInfo.rollNumber,
+              department: generalInfo.branch,
+              whatsappNo: generalInfo.phoneNumber,
+            },
+          },
+          { new: true }
+        );
+      }
 
       res.status(201).json({
-        success: true,
-        application: populatedApplication,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
-    }
-  }
-);
-// Update application status
-export const updateApplicationStatus = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      const validStatuses = ["pending", "shortlisted", "rejected", "accepted"];
-      if (!validStatuses.includes(status)) {
-        return next(new ErrorHandler("Invalid status", 400));
-      }
-
-      const application = await RecruitmentModel.findById(id);
-      if (!application) {
-        return next(new ErrorHandler("Application not found", 404));
-      }
-
-      application.status = status;
-      await application.save();
-
-      res.status(200).json({
         success: true,
         application,
       });
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+      return next(
+        new ErrorHandler(
+          error.message || "Something went wrong. Please try again.",
+          400
+        )
+      );
     }
+  }
+);
+
+// Update application status
+export const updateApplicationStatus = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ["pending", "shortlisted", "rejected", "accepted"];
+    if (!validStatuses.includes(status)) {
+      return next(new ErrorHandler("Invalid status", 400));
+    }
+
+    const application = await RecruitmentModel.findById(id);
+    if (!application) {
+      return next(new ErrorHandler("Application not found", 404));
+    }
+
+    application.status = status;
+    await application.save();
+
+    res.status(200).json({
+      success: true,
+      application,
+    });
   }
 );
 
 // Delete application
 export const deleteApplication = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params;
-      const application = await RecruitmentModel.findById(id);
+    const { id } = req.params;
 
-      if (!application) {
-        return next(new ErrorHandler("Application not found", 404));
-      }
-
-      await RecruitmentModel.findByIdAndDelete(id);
-
-      res.status(200).json({
-        success: true,
-        message: "Application deleted successfully",
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    const application = await RecruitmentModel.findById(id);
+    if (!application) {
+      return next(new ErrorHandler("Application not found", 404));
     }
+
+    await RecruitmentModel.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Application deleted successfully",
+    });
   }
 );
 
 // Get single application
 export const getApplication = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params;
-      const application = await RecruitmentModel.findById(id);
+    const { id } = req.params;
+    const application = await RecruitmentModel.findById(id);
 
-      if (!application) {
-        return next(new ErrorHandler("Application not found", 404));
-      }
-
-      res.status(200).json({
-        success: true,
-        application,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    if (!application) {
+      return next(new ErrorHandler("Application not found", 404));
     }
+
+    res.status(200).json({
+      success: true,
+      application,
+    });
   }
 );
+
+// Check if a user is registered
 export const checkUserRegistration = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { email, rollNumber } = req.query;
+    const { email, rollNumber } = req.query;
 
-      if (!email && !rollNumber) {
-        return next(
-          new ErrorHandler("Email or Roll Number is required for checking", 400)
-        );
-      }
-
-      // Build query based on provided parameters
-      const query: any = {
-        $or: [],
-      };
-
-      if (email) {
-        query.$or.push({ "generalInfo.email": email });
-      }
-
-      if (rollNumber) {
-        query.$or.push({ "generalInfo.rollNumber": rollNumber });
-      }
-
-      const existingApplication = await RecruitmentModel.findOne(query);
-
-      res.status(200).json({
-        success: true,
-        isRegistered: !!existingApplication,
-        application: existingApplication
-          ? {
-              id: existingApplication._id,
-              status: existingApplication.status,
-              positions: existingApplication.generalInfo.positions,
-            }
-          : null,
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
+    if (!email && !rollNumber) {
+      return next(
+        new ErrorHandler("Email or Roll Number is required for checking", 400)
+      );
     }
+
+    const query: any = {
+      $or: [],
+    };
+
+    if (email) query.$or.push({ "generalInfo.email": email });
+    if (rollNumber) query.$or.push({ "generalInfo.rollNumber": rollNumber });
+
+    const existingApplication = await RecruitmentModel.findOne(query);
+
+    res.status(200).json({
+      success: true,
+      isRegistered: !!existingApplication,
+      application: existingApplication
+        ? {
+            id: existingApplication._id,
+            status: existingApplication.status,
+            positions: existingApplication.positions,
+          }
+        : null,
+    });
   }
 );

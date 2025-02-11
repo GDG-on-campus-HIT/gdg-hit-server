@@ -1,227 +1,72 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
-import { IUser } from "./user.model";
+import mongoose, { Document, Schema, Model, ObjectId } from "mongoose";
 
-// Step 1: General Information Interface
-interface IGeneralInfo {
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  rollNumber: string;
-  branch: string;
-  branchYear: string;
-  positions: string[];
-}
-
-// Step 2: GDG Perspective Interface
-interface IGDGPerspective {
-  gdgPerspective: string;
-  eventIdeas: string;
-}
-
-// Step 3: Role-Specific Interfaces
-interface IWebDeveloper {
-  technologies?: string;
-  projects?: string;
-  learning?: string;
-  featureSuggestion?: string;
-}
-
-interface IAppDeveloper {
-  technologies?: string;
-  projects?: string;
-  learning?: string;
-  featureSuggestion?: string;
-}
-
-interface IPublicRelations {
-  mockPost?: string;
-  experience?: string;
-  preferredPlatforms?: string;
-}
-
-interface IVideoEditor {
-  tools?: string;
-  videoLink?: string;
-  motionGraphics?: boolean;
-}
-
-interface IContentWriter {
-  hasWrittenBefore?: string;
-}
-
-interface IGraphicsDesigner {
-  designTools?: string;
-  portfolioLink?: string;
-  socialMediaDesign?: string;
-  eventPosterConcept?: string;
-}
-
-interface IPhotographer {
-  photographyType?: string;
-  eventExperience?: string;
-  photographyPortfolio?: string;
-  cameraModel?: string;
-}
-
-// Step 4: Final Information Interface
-interface IFinalInfo {
-  linkedIn?: string;
-  portfolio?: string;
-  previousClubs?: string;
-  timeCommitment: string;
-  reasonToJoin: string;
-}
-
-// Main Recruitment Interface
-export interface IRecruitment extends Document {
-  user: mongoose.Types.ObjectId | IUser;
-  // Step 1
-  generalInfo: IGeneralInfo;
-  // Step 2
-  gdgPerspective: IGDGPerspective;
-  // Step 3
-  roleSpecific: {
-    webDeveloper?: IWebDeveloper;
-    appDeveloper?: IAppDeveloper;
-    publicRelations?: IPublicRelations;
-    videoEditor?: IVideoEditor;
-    contentWriter?: IContentWriter;
-    graphicsDesigner?: IGraphicsDesigner;
-    photographer?: IPhotographer;
+// Recruitment Interface
+interface IRecruitment extends Document {
+  user: ObjectId;
+  generalInfo: {
+    email: string;
+    rollNumber: string;
   };
-  // Step 4
-  finalInfo: IFinalInfo;
-  // Additional fields
-  status: "pending" | "shortlisted" | "rejected" | "accepted";
+  positions: string[];
+  gdgPerspective: {
+    gdgPerspective: string;
+    eventIdeas: string;
+  };
+  roleSpecific: {
+    [key: string]: any;
+  };
+  finalInfo: {
+    timeCommitment: string;
+    reasonToJoin: string;
+  };
+  status: "pending" | "accepted" | "rejected";
   createdAt: Date;
   updatedAt: Date;
 }
 
+// Recruitment Schema
 const recruitmentSchema = new Schema<IRecruitment>(
   {
     user: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "User reference is required"],
+      required: true,
     },
-    // Step 1: General Information
     generalInfo: {
-      fullName: {
-        type: String,
-        required: [true, "Please enter your full name"],
-      },
-      email: {
-        type: String,
-        required: [true, "Please enter your email"],
-        unique: true,
-      },
-      phoneNumber: {
-        type: String,
-        required: [true, "Please enter your phone number"],
-      },
-      rollNumber: {
-        type: String,
-        required: [true, "Please enter your roll number"],
-      },
-      branch: {
-        type: String,
-        required: [true, "Please select your branch"],
-      },
-      branchYear: {
-        type: String,
-        required: [true, "Please select your year"],
-      },
-      positions: {
-        type: [String],
-        required: [true, "Please select the position(s) you are applying for"],
-      },
+      email: { type: String, required: true },
+      rollNumber: { type: String, required: true },
     },
-
-    // Step 2: GDG Perspective
+    positions: [
+      {
+        type: String,
+        required: true,
+      },
+    ],
     gdgPerspective: {
-      gdgPerspective: {
-        type: String,
-        required: [true, "This field is required"],
-      },
-      eventIdeas: {
-        type: String,
-        required: [true, "This field is required"],
-      },
+      gdgPerspective: { type: String, required: true },
+      eventIdeas: { type: String, required: true },
     },
-
-    // Step 3: Role-Specific Information
     roleSpecific: {
-      webDeveloper: {
-        technologies: String,
-        projects: String,
-        learning: String,
-        featureSuggestion: String,
-      },
-      appDeveloper: {
-        technologies: String,
-        projects: String,
-        learning: String,
-        featureSuggestion: String,
-      },
-      publicRelations: {
-        mockPost: {
-          type: String,
-          maxLength: 150,
-        },
-        experience: String,
-        preferredPlatforms: String,
-      },
-      videoEditor: {
-        tools: String,
-        videoLink: String,
-        motionGraphics: Boolean,
-      },
-      contentWriter: {
-        hasWrittenBefore: String,
-      },
-      graphicsDesigner: {
-        designTools: String,
-        portfolioLink: String,
-        socialMediaDesign: String,
-        eventPosterConcept: String,
-      },
-      photographer: {
-        photographyType: String,
-        eventExperience: String,
-        photographyPortfolio: String,
-        cameraModel: String,
-      },
+      type: Map,
+      of: Schema.Types.Mixed,
     },
-
-    // Step 4: Final Information
     finalInfo: {
-      linkedIn: String,
-      portfolio: String,
-      previousClubs: String,
-      timeCommitment: {
-        type: String,
-        required: [false, "Please specify your weekly commitment"],
-      },
-      reasonToJoin: {
-        type: String,
-        required: [false, "Please provide a reason for joining GDG HIT"],
-        maxLength: 200,
-      },
+      timeCommitment: { type: String, required: true },
+      reasonToJoin: { type: String, required: true },
     },
-
-    // Additional fields
     status: {
       type: String,
-      enum: ["pending", "shortlisted", "rejected", "accepted"],
+      enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-export const RecruitmentModel: Model<IRecruitment> = mongoose.model(
+// Recruitment Model
+const RecruitmentModel: Model<IRecruitment> = mongoose.model(
   "Recruitment",
   recruitmentSchema
 );
+
+export { RecruitmentModel, IRecruitment };

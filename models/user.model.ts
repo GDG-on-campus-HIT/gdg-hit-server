@@ -14,7 +14,6 @@ export interface IUser extends Document {
   classRollNo: string;
   department: string;
   whatsappNo: number;
-  recruitmentId?: ObjectId;
   isVerified: boolean;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -59,10 +58,6 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
     whatsappNo: {
       type: Number,
-    },
-    recruitmentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Recruitment", 
     },
     isVerified: {
       type: Boolean,
