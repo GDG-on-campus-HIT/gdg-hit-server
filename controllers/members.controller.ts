@@ -87,13 +87,15 @@ export const getMembers = CatchAsyncError(
           ),
           videoEditor: members.filter(
             (member) =>
-              member.designation === ("Graphic Designer Lead" || "Video Editor")
+              member.designation === ("Video Editor Lead" || "Video Editor")
           ),
           photographer: members.filter(
             (member) => member.designation === "Photographer"
           ),
         },
-        prTeam: members.filter((member) => member.designation === ("PR and Mangement Lead" || "PR")),
+        prTeam: members.filter(
+          (member) => member.designation === ("PR and Mangement Lead" || "PR")
+        ),
       };
 
       res.status(200).json({
