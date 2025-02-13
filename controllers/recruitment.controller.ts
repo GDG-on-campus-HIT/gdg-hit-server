@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { RecruitmentModel } from "../models/recruitment.model";
+import userModel from "../models/user.model";
 
 // Get all applications with filtering
 export const getApplications = CatchAsyncError(
@@ -32,13 +33,39 @@ export const getApplications = CatchAsyncError(
 export const submitApplication = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log("Received request body:", req.body);
+
       const { generalInfo, gdgPerspective, roleSpecific, finalInfo } = req.body;
 
-      // First check if user already exists
+      console.log("Extracted fields:", {
+        generalInfo,
+        gdgPerspective,
+        roleSpecific,
+        finalInfo,
+      });
+
+      if (!req.user) {
+        return next(new ErrorHandler("User authentication failed.", 401));
+      }
+
+      const userId = (req.user as { _id: string })?._id;
+      console.log("Extracted userId:", userId);
+
+      if (!userId) {
+        return next(new ErrorHandler("User ID is missing in request.", 400));
+      }
+
+      const user = await userModel.findById(userId);
+      if (!user) {
+        return next(new ErrorHandler("User not found.", 404));
+      }
+
+      console.log("Checking for existing application...");
       const existingApplication = await RecruitmentModel.findOne({
         $or: [
           { "generalInfo.email": generalInfo.email },
           { "generalInfo.rollNumber": generalInfo.rollNumber },
+          { user: user._id },
         ],
       });
 
@@ -55,31 +82,63 @@ export const submitApplication = CatchAsyncError(
         );
       }
 
-      // Validation for Step 1: General Information
-      const requiredGeneralFields = {
-        fullName: "Full name is required",
-        email: "Email is required",
-        phoneNumber: "Phone number is required",
-        rollNumber: "Roll number is required",
-        branch: "Branch is required",
-        branchYear: "Year is required",
-        positions: "At least one position is required",
-      };
+      console.log("Validating general information...");
+      const requiredGeneralFields = [
+        "fullName",
+        "email",
+        "phoneNumber",
+        "rollNumber",
+        "branch",
+        "branchYear",
+        "positions",
+      ];
 
-      for (const [key, message] of Object.entries(requiredGeneralFields)) {
-        if (!generalInfo?.[key]) {
-          return next(new ErrorHandler(message, 400));
+      for (const field of requiredGeneralFields) {
+        if (!generalInfo?.[field]) {
+          return next(new ErrorHandler(`${field} is required`, 400));
         }
       }
 
-      // Validation for Step 2: GDG Perspective
+      console.log("Checking and updating user roll number and branch...");
+      // Check and update user roll number and branch
+      if (
+        generalInfo.rollNumber !== user.classRollNo ||
+        generalInfo.branch !== user.department
+      ) {
+        await userModel.findByIdAndUpdate(
+          user._id,
+          {
+            $set: {
+              classRollNo: generalInfo.rollNumber,
+              department: generalInfo.branch,
+            },
+          },
+          { new: true }
+        );
+      }
+
+      // Update user's LinkedIn and GitHub profiles
+      if (finalInfo?.linkedIn || finalInfo?.portfolio) {
+        await userModel.findByIdAndUpdate(
+          user._id,
+          {
+            $set: {
+              linkedinProfile: finalInfo.linkedIn || user.linkedinProfile,
+              githubProfile: finalInfo.portfolio || user.githubProfile,
+            },
+          },
+          { new: true }
+        );
+      }
+      console.log("Validating GDG perspective...");
+      // Validate GDG perspective
       if (!gdgPerspective?.gdgPerspective || !gdgPerspective?.eventIdeas) {
         return next(
           new ErrorHandler("GDG perspective and event ideas are required", 400)
         );
       }
 
-      // Validation for Step 4: Final Information
+      console.log("Validating final information...");
       if (!finalInfo?.timeCommitment || !finalInfo?.reasonToJoin) {
         return next(
           new ErrorHandler(
@@ -89,17 +148,18 @@ export const submitApplication = CatchAsyncError(
         );
       }
 
-      // Validate role-specific information based on selected positions
-      const selectedPositions = generalInfo.positions;
+      console.log("Validating role-specific information...");
+      // Validate role-specific information
       const roleSpecificData: any = {};
-
-      selectedPositions.forEach((position: string) => {
+      generalInfo.positions.forEach((position: string) => {
         if (roleSpecific?.[position]) {
           roleSpecificData[position] = roleSpecific[position];
         }
       });
 
+      console.log("Creating new application...");
       const application = await RecruitmentModel.create({
+        user: userId,
         generalInfo,
         gdgPerspective,
         roleSpecific: roleSpecificData,
@@ -107,12 +167,15 @@ export const submitApplication = CatchAsyncError(
         status: "pending",
       });
 
+      console.log("Application created successfully:", application);
+
       res.status(201).json({
         success: true,
         application,
       });
     } catch (error: any) {
-      // Check for MongoDB duplicate key error
+      console.error("Error occurred:", error);
+
       if (error.code === 11000) {
         return next(
           new ErrorHandler(
@@ -121,11 +184,11 @@ export const submitApplication = CatchAsyncError(
           )
         );
       }
-      return next(new ErrorHandler(error.message, 400));
+
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
-
 // Update application status
 export const updateApplicationStatus = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
