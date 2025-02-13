@@ -41,7 +41,7 @@ interface IPublicRelations {
 interface IVideoEditor {
   tools?: string;
   videoLink?: string;
-  motionGraphics?: boolean;
+  motionGraphics?: string;
 }
 
 interface IContentWriter {
@@ -173,7 +173,7 @@ const recruitmentSchema = new Schema<IRecruitment>(
       videoEditor: {
         tools: String,
         videoLink: String,
-        motionGraphics: Boolean,
+        motionGraphics: String,
       },
       contentWriter: {
         hasWrittenBefore: String,
