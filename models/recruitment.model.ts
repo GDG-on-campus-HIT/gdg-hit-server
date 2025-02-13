@@ -5,7 +5,7 @@ interface IGeneralInfo {
   fullName: string;
   email: string;
   phoneNumber: string;
-  rollNumber: number;
+  rollNumber: string;
   branch: string;
   branchYear: string;
   positions: string[];
@@ -64,6 +64,7 @@ interface IPhotographer {
 
 // Step 4: Final Information Interface
 interface IFinalInfo {
+  github?:string;
   linkedIn?: string;
   portfolio?: string;
   previousClubs?: string;
@@ -73,6 +74,7 @@ interface IFinalInfo {
 
 // Main Recruitment Interface
 export interface IRecruitment extends Document {
+  user: mongoose.Schema.Types.ObjectId;
   // Step 1
   generalInfo: IGeneralInfo;
   // Step 2
@@ -97,6 +99,10 @@ export interface IRecruitment extends Document {
 
 const recruitmentSchema = new Schema<IRecruitment>(
   {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
     // Step 1: General Information
     generalInfo: {
       fullName: {
@@ -113,7 +119,7 @@ const recruitmentSchema = new Schema<IRecruitment>(
         required: [true, "Please enter your phone number"],
       },
       rollNumber: {
-        type: Number,
+        type: String,
         required: [true, "Please enter your roll number"],
       },
       branch: {
@@ -189,6 +195,7 @@ const recruitmentSchema = new Schema<IRecruitment>(
     // Step 4: Final Information
     finalInfo: {
       linkedIn: String,
+      github:String,
       portfolio: String,
       previousClubs: String,
       timeCommitment: {
