@@ -16,6 +16,8 @@ export interface IUser extends Document {
   whatsappNo: number;
   isVerified: boolean;
   resetPasswordToken?: string;
+  linkedinProfile?: string;
+  githubProfile?: string;
   resetPasswordExpires?: Date;
   comparePassword: (password: string) => Promise<boolean>;
   SignAcessToken: () => string;
@@ -53,6 +55,8 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     classRollNo: {
       type: String,
     },
+    linkedinProfile: { type: String },
+    githubProfile: { type: String },
     department: {
       type: String,
     },
@@ -80,9 +84,13 @@ userSchema.pre<IUser>("save", async function (next) {
 
 // signin acess and refresh token
 userSchema.methods.SignAcessToken = function () {
-  return jwt.sign({ id: this._id, role:this.role }, process.env.ACCESS_TOKEN || "", {
-    expiresIn: "5m",
-  });
+  return jwt.sign(
+    { id: this._id, role: this.role },
+    process.env.ACCESS_TOKEN || "",
+    {
+      expiresIn: "5m",
+    }
+  );
 };
 
 userSchema.methods.SignRefreshToken = function () {
