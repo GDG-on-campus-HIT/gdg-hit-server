@@ -17,8 +17,11 @@ recruitmentRouter.get(
   authorizeRoles("admin"),
   getApplications
 );
+
 recruitmentRouter.get("/applications/:id", isAuthenticate, getApplication);
+
 recruitmentRouter.post("/submit", isAuthenticate, submitApplication);
+
 recruitmentRouter.put(
   "/applications/:id",
   isAuthenticate,
