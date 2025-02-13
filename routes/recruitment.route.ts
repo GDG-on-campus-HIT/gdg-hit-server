@@ -20,7 +20,7 @@ recruitmentRouter.get(
 
 recruitmentRouter.get("/applications/:id", isAuthenticate, getApplication);
 
-recruitmentRouter.post("/apply", submitApplication);
+recruitmentRouter.post("/submit", isAuthenticate, submitApplication);
 
 recruitmentRouter.put(
   "/applications/:id",
