@@ -20,7 +20,7 @@ recruitmentRouter.get(
 
 recruitmentRouter.get("/applications/:id", isAuthenticate, getApplication);
 
-recruitmentRouter.post("/submit", isAuthenticate, submitApplication);
+recruitmentRouter.post("/recruitmentFormSubmission", isAuthenticate, submitApplication);
 
 recruitmentRouter.put(
   "/applications/:id",
@@ -34,6 +34,6 @@ recruitmentRouter.delete(
   authorizeRoles("admin"),
   deleteApplication
 );
-recruitmentRouter.get("/isAlreadyRegistered", checkUserRegistration);
+recruitmentRouter.get("/isAlreadyRegistered", isAuthenticate, checkUserRegistration);
 
 export default recruitmentRouter;

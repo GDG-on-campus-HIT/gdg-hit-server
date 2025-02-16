@@ -12,10 +12,10 @@ export const getMembers = CatchAsyncError(
       // Custom sorting order for designations
       const designationOrder = [
         "Organizer",
+        "PR and Mangement Lead",
         "Web Development Lead",
         "App Development Lead",
         "Machine Learning Lead",
-        "PR and Mangement Lead",
         "Content Writer Lead",
         "Video Editor Lead",
         "Graphic Designer Lead",
@@ -48,10 +48,10 @@ export const getMembers = CatchAsyncError(
         coreTeam: members.filter((member) =>
           [
             "Organizer",
+            "PR and Mangement Lead",
             "Web Development Lead",
             "App Development Lead",
             "Machine Learning Lead",
-            "PR and Mangement Lead",
             "Content Writer Lead",
             "Video Editor Lead",
             "Graphic Designer Lead",
@@ -122,7 +122,7 @@ interface IMembers {
 
 export const addMember = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log(req.user?._id);
+    // console.log(req.user?._id);
     try {
       const {
         name,
