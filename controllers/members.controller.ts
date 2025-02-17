@@ -24,10 +24,10 @@ export const getMembers = CatchAsyncError(
         "App Developer",
         "Machine Learning",
         "PR",
-        "Photographer",
+        "Video Editor",
         "Graphic Designer",
         "Content Writer",
-        "Video Editor",
+        "Photographer",
       ];
 
       // Sorting function
@@ -76,6 +76,10 @@ export const getMembers = CatchAsyncError(
           ),
         },
         mediaTeam: {
+          videoEditor: members.filter(
+            (member) =>
+              member.designation === ("Video Editor Lead" || "Video Editor")
+          ),
           graphicDesigner: members.filter(
             (member) =>
               member.designation ===
@@ -84,10 +88,6 @@ export const getMembers = CatchAsyncError(
           contentWriter: members.filter(
             (member) =>
               member.designation === ("Content Writer Lead" || "Content Writer")
-          ),
-          videoEditor: members.filter(
-            (member) =>
-              member.designation === ("Video Editor Lead" || "Video Editor")
           ),
           photographer: members.filter(
             (member) => member.designation === "Photographer"
