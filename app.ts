@@ -71,6 +71,8 @@ app.get(
       httpOnly: false,
       secure: true,
       sameSite: "none",
+      maxAge: 10 * 60 * 1000,
+      ...(process.env.NODE_ENV === "production" && { domain: "gdghit.site" }),
     });
     next();
   },
@@ -95,7 +97,7 @@ app.get(
     let redirectUrl = req.cookies.redirect_url || "/";
 
     // Ensure redirect URL points to frontend (localhost:3000)
-    redirectUrl = `http://localhost:3000${decodeURIComponent(redirectUrl)}`;
+    redirectUrl = `https://gdghit.site${decodeURIComponent(redirectUrl)}`;
 
     res.clearCookie("redirect_url");
     res.send(
