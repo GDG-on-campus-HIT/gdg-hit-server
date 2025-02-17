@@ -35,7 +35,7 @@ app.use(cookieParser());
 // cors = cross origin resource sharing
 app.use(
   cors({
-    origin: ["http://localhost:3000","https://gdg-on-campus-hit.vercel.app"],
+    origin: ["http://localhost:3000","https://gdg-on-campus-hit.vercel.app","https://gdghit.site"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
