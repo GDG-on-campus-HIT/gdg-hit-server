@@ -58,45 +58,34 @@ export const getMembers = CatchAsyncError(
           ].includes(member.designation)
         ),
         techTeam: {
-          webDeveloper: members.filter(
-            (member) =>
-              member.designation === ("Web Development Lead" || "Web Developer")
+          webDeveloper: members.filter((member) =>
+            ["Web Development Lead", "Web Developer"].includes(member.designation)
           ),
-          appDeveloper: members.filter(
-            (member) =>
-              member.designation === ("App Development Lead" || "App Developer")
+          appDeveloper: members.filter((member) =>
+            ["App Development Lead", "App Developer"].includes(member.designation)
           ),
-          machineLearning: members.filter(
-            (member) =>
-              member.designation ===
-              ("Machine Learning Lead" || "Machine Learning")
+          machineLearning: members.filter((member) =>
+            ["Machine Learning Lead", "Machine Learning"].includes(member.designation)
           ),
-          techMember: members.filter(
-            (member) => member.designation === "Technical Member"
-          ),
+          techMember: members.filter((member) => member.designation === "Technical Member"),
         },
         mediaTeam: {
-          videoEditor: members.filter(
-            (member) =>
-              member.designation === ("Video Editor Lead" || "Video Editor")
+          videoEditor: members.filter((member) =>
+            ["Video Editor Lead", "Video Editor"].includes(member.designation)
           ),
-          graphicDesigner: members.filter(
-            (member) =>
-              member.designation ===
-              ("Graphic Designer Lead" || "Graphic Designer")
+          graphicDesigner: members.filter((member) =>
+            ["Graphic Designer Lead", "Graphic Designer"].includes(member.designation)
           ),
-          contentWriter: members.filter(
-            (member) =>
-              member.designation === ("Content Writer Lead" || "Content Writer")
+          contentWriter: members.filter((member) =>
+            ["Content Writer Lead", "Content Writer"].includes(member.designation)
           ),
-          photographer: members.filter(
-            (member) => member.designation === "Photographer"
-          ),
+          photographer: members.filter((member) => member.designation === "Photographer"),
         },
-        prTeam: members.filter(
-          (member) => member.designation === ("PR and Mangement Lead" || "PR")
+        prTeam: members.filter((member) =>
+          ["PR and Mangement Lead", "PR"].includes(member.designation)
         ),
       };
+      
 
       res.status(200).json({
         success: true,
