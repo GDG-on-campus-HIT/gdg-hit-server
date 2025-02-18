@@ -33,13 +33,10 @@ export const getApplications = CatchAsyncError(
 export const submitApplication = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      console.log("Received request body:", req.body);
-
-      const { generalInfo, gdgPerspective, roleSpecific, finalInfo } = req.body;
+      const { generalInfo, roleSpecific, finalInfo } = req.body;
 
       console.log("Extracted fields:", {
         generalInfo,
-        gdgPerspective,
         roleSpecific,
         finalInfo,
       });
@@ -49,7 +46,6 @@ export const submitApplication = CatchAsyncError(
       }
 
       const userId = (req.user as { _id: string })?._id;
-      console.log("Extracted userId:", userId);
 
       if (!userId) {
         return next(new ErrorHandler("User ID is missing in request.", 400));
@@ -60,13 +56,9 @@ export const submitApplication = CatchAsyncError(
         return next(new ErrorHandler("User not found.", 404));
       }
 
-      console.log("Checking for existing application...");
+      // console.log("Checking for existing application...");
       const existingApplication = await RecruitmentModel.findOne({
-        $or: [
-          { "generalInfo.email": generalInfo.email },
-          { "generalInfo.rollNumber": generalInfo.rollNumber },
-          { user: user._id },
-        ],
+        $or: [{ "generalInfo.email": generalInfo.email }, { user: user._id }],
       });
 
       if (existingApplication) {
@@ -82,7 +74,7 @@ export const submitApplication = CatchAsyncError(
         );
       }
 
-      console.log("Validating general information...");
+      // console.log("Validating general information...");
       const requiredGeneralFields = [
         "fullName",
         "email",
@@ -99,7 +91,7 @@ export const submitApplication = CatchAsyncError(
         }
       }
 
-      console.log("Checking and updating user roll number and branch...");
+      // console.log("Checking and updating user roll number and branch...");
       // Check and update user roll number and branch
       if (
         generalInfo.rollNumber !== user.classRollNo ||
@@ -130,25 +122,8 @@ export const submitApplication = CatchAsyncError(
           { new: true }
         );
       }
-      console.log("Validating GDG perspective...");
-      // Validate GDG perspective
-      if (!gdgPerspective?.gdgPerspective || !gdgPerspective?.eventIdeas) {
-        return next(
-          new ErrorHandler("GDG perspective and event ideas are required", 400)
-        );
-      }
 
-      console.log("Validating final information...");
-      if (!finalInfo?.timeCommitment || !finalInfo?.reasonToJoin) {
-        return next(
-          new ErrorHandler(
-            "Time commitment and reason to join are required",
-            400
-          )
-        );
-      }
-
-      console.log("Validating role-specific information...");
+      // console.log("Validating role-specific information...");
       // Validate role-specific information
       const roleSpecificData: any = {};
       generalInfo.positions.forEach((position: string) => {
@@ -157,24 +132,23 @@ export const submitApplication = CatchAsyncError(
         }
       });
 
-      console.log("Creating new application...");
+      // console.log("Creating new application...");
       const application = await RecruitmentModel.create({
         user: userId,
         generalInfo,
-        gdgPerspective,
         roleSpecific: roleSpecificData,
         finalInfo,
         status: "pending",
       });
 
-      console.log("Application created successfully:", application);
+      // console.log("Application created successfully:", application);
 
       res.status(201).json({
         success: true,
         application,
       });
     } catch (error: any) {
-      console.error("Error occurred:", error);
+      // console.error("Error occurred:", error);
 
       if (error.code === 11000) {
         return next(
@@ -189,6 +163,7 @@ export const submitApplication = CatchAsyncError(
     }
   }
 );
+
 // Update application status
 export const updateApplicationStatus = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -265,25 +240,13 @@ export const getApplication = CatchAsyncError(
 export const checkUserRegistration = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, rollNumber } = req.query;
-
-      if (!email && !rollNumber) {
-        return next(
-          new ErrorHandler("Email or Roll Number is required for checking", 400)
-        );
-      }
-
       // Build query based on provided parameters
       const query: any = {
         $or: [],
       };
 
-      if (email) {
-        query.$or.push({ "generalInfo.email": email });
-      }
-
-      if (rollNumber) {
-        query.$or.push({ "generalInfo.rollNumber": rollNumber });
+      if (req?.user?._id) {
+        query.$or.push({ user: req?.user?._id });
       }
 
       const existingApplication = await RecruitmentModel.findOne(query);

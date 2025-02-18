@@ -11,11 +11,6 @@ interface IGeneralInfo {
   positions: string[];
 }
 
-// Step 2: GDG Perspective Interface
-interface IGDGPerspective {
-  gdgPerspective: string;
-  eventIdeas: string;
-}
 
 // Step 3: Role-Specific Interfaces
 interface IWebDeveloper {
@@ -30,6 +25,17 @@ interface IAppDeveloper {
   projects?: string;
   learning?: string;
   featureSuggestion?: string;
+}
+
+interface IMachineLearing {
+  technologies?: string;
+  projects?: string;
+  learning?: string;
+}
+
+interface ITechMember {
+  technologies?: string;
+  learning?: string;
 }
 
 interface IPublicRelations {
@@ -64,12 +70,9 @@ interface IPhotographer {
 
 // Step 4: Final Information Interface
 interface IFinalInfo {
-  github?:string;
   linkedIn?: string;
   portfolio?: string;
   previousClubs?: string;
-  timeCommitment: string;
-  reasonToJoin: string;
 }
 
 // Main Recruitment Interface
@@ -77,12 +80,12 @@ export interface IRecruitment extends Document {
   user: mongoose.Schema.Types.ObjectId;
   // Step 1
   generalInfo: IGeneralInfo;
-  // Step 2
-  gdgPerspective: IGDGPerspective;
   // Step 3
   roleSpecific: {
     webDeveloper?: IWebDeveloper;
     appDeveloper?: IAppDeveloper;
+    machineLearning?: IMachineLearing;
+    techMember?: ITechMember;
     publicRelations?: IPublicRelations;
     videoEditor?: IVideoEditor;
     contentWriter?: IContentWriter;
@@ -135,19 +138,6 @@ const recruitmentSchema = new Schema<IRecruitment>(
         required: [true, "Please select the position(s) you are applying for"],
       },
     },
-
-    // Step 2: GDG Perspective
-    gdgPerspective: {
-      gdgPerspective: {
-        type: String,
-        required: [true, "This field is required"],
-      },
-      eventIdeas: {
-        type: String,
-        required: [true, "This field is required"],
-      },
-    },
-
     // Step 3: Role-Specific Information
     roleSpecific: {
       webDeveloper: {
@@ -161,6 +151,15 @@ const recruitmentSchema = new Schema<IRecruitment>(
         projects: String,
         learning: String,
         featureSuggestion: String,
+      },
+      machineLearning: {
+        technologies: String,
+        projects: String,
+        learning: String,
+      },
+      techMember: {
+        technologies: String,
+        learning: String,
       },
       publicRelations: {
         mockPost: {
@@ -195,18 +194,7 @@ const recruitmentSchema = new Schema<IRecruitment>(
     // Step 4: Final Information
     finalInfo: {
       linkedIn: String,
-      github:String,
-      portfolio: String,
       previousClubs: String,
-      timeCommitment: {
-        type: String,
-        required: [false, "Please specify your weekly commitment"],
-      },
-      reasonToJoin: {
-        type: String,
-        required: [false, "Please provide a reason for joining GDG HIT"],
-        maxLength: 200,
-      },
     },
 
     // Additional fields

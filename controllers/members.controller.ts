@@ -12,10 +12,10 @@ export const getMembers = CatchAsyncError(
       // Custom sorting order for designations
       const designationOrder = [
         "Organizer",
+        "PR and Mangement Lead",
         "Web Development Lead",
         "App Development Lead",
         "Machine Learning Lead",
-        "PR and Mangement Lead",
         "Content Writer Lead",
         "Video Editor Lead",
         "Graphic Designer Lead",
@@ -24,10 +24,10 @@ export const getMembers = CatchAsyncError(
         "App Developer",
         "Machine Learning",
         "PR",
-        "Photographer",
+        "Video Editor",
         "Graphic Designer",
         "Content Writer",
-        "Video Editor",
+        "Photographer",
       ];
 
       // Sorting function
@@ -48,55 +48,44 @@ export const getMembers = CatchAsyncError(
         coreTeam: members.filter((member) =>
           [
             "Organizer",
+            "PR and Mangement Lead",
             "Web Development Lead",
             "App Development Lead",
             "Machine Learning Lead",
-            "PR and Mangement Lead",
             "Content Writer Lead",
             "Video Editor Lead",
             "Graphic Designer Lead",
           ].includes(member.designation)
         ),
         techTeam: {
-          webDeveloper: members.filter(
-            (member) =>
-              member.designation === ("Web Development Lead" || "Web Developer")
+          webDeveloper: members.filter((member) =>
+            ["Web Development Lead", "Web Developer"].includes(member.designation)
           ),
-          appDeveloper: members.filter(
-            (member) =>
-              member.designation === ("App Development Lead" || "App Developer")
+          appDeveloper: members.filter((member) =>
+            ["App Development Lead", "App Developer"].includes(member.designation)
           ),
-          machineLearning: members.filter(
-            (member) =>
-              member.designation ===
-              ("Machine Learning Lead" || "Machine Learning")
+          machineLearning: members.filter((member) =>
+            ["Machine Learning Lead", "Machine Learning"].includes(member.designation)
           ),
-          techMember: members.filter(
-            (member) => member.designation === "Technical Member"
-          ),
+          techMember: members.filter((member) => member.designation === "Technical Member"),
         },
         mediaTeam: {
-          graphicDesigner: members.filter(
-            (member) =>
-              member.designation ===
-              ("Graphic Designer Lead" || "Graphic Designer")
+          videoEditor: members.filter((member) =>
+            ["Video Editor Lead", "Video Editor"].includes(member.designation)
           ),
-          contentWriter: members.filter(
-            (member) =>
-              member.designation === ("Content Writer Lead" || "Content Writer")
+          graphicDesigner: members.filter((member) =>
+            ["Graphic Designer Lead", "Graphic Designer"].includes(member.designation)
           ),
-          videoEditor: members.filter(
-            (member) =>
-              member.designation === ("Video Editor Lead" || "Video Editor")
+          contentWriter: members.filter((member) =>
+            ["Content Writer Lead", "Content Writer"].includes(member.designation)
           ),
-          photographer: members.filter(
-            (member) => member.designation === "Photographer"
-          ),
+          photographer: members.filter((member) => member.designation === "Photographer"),
         },
-        prTeam: members.filter(
-          (member) => member.designation === ("PR and Mangement Lead" || "PR")
+        prTeam: members.filter((member) =>
+          ["PR and Mangement Lead", "PR"].includes(member.designation)
         ),
       };
+      
 
       res.status(200).json({
         success: true,
@@ -122,7 +111,7 @@ interface IMembers {
 
 export const addMember = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log(req.user?._id);
+    // console.log(req.user?._id);
     try {
       const {
         name,
