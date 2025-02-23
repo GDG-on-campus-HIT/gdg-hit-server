@@ -5,12 +5,12 @@ import { uploadManyUser } from "../controllers/user.controller";
 
 const adminRoute = express.Router();
 
-adminRoute.get(
-  "/allusers",
-  isAuthenticate,
-  authorizeRoles("admin"),
-  getAllUsers
-);
+// adminRoute.get(
+//   "/allusers",
+//   // isAuthenticate,
+//   // authorizeRoles("admin"),
+//   getAllUsers
+// );
 
 // adminRoute.post(
 //   "/uploadUser",

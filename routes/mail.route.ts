@@ -1,4 +1,4 @@
-import { sendBulkCertificateMails, sendCertificateMail, sendInviteMail } from '../controllers/mail.controller';
+import { sendBulkCertificateMails, sendCertificateMail, sendPromotionMail } from '../controllers/mail.controller';
 import { authorizeRoles, isAuthenticate } from './../middleware/auth';
 import express from 'express';
 
@@ -10,7 +10,9 @@ mailRoute.post('/certificate-mail/:registration_id',isAuthenticate, authorizeRol
 mailRoute.post('/certificate-bulk-mail',isAuthenticate, authorizeRoles("admin"), sendBulkCertificateMails);
 
 
-mailRoute.post('/invite-mail/:registration_id',isAuthenticate, authorizeRoles("admin"), sendInviteMail);
+// mailRoute.post('/invite-mail/:registration_id',isAuthenticate, authorizeRoles("admin"), sendInviteMail);
+
+mailRoute.post('/sendPromotionMail', sendPromotionMail);
 
 
 export default mailRoute;
