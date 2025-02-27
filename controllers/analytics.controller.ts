@@ -5,7 +5,7 @@ import ErrorHandler from "../utlis/ErrorHandler";
 import { eventModel } from "../models/events.model";
 import { eventRegistrationModel } from "../models/events.model";
 import { certificateModel } from "../models/certificate.model";
-import { RecruitmentModel } from "../models/recruitment.model";
+import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
 
 export const getUserAnalytics = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -332,74 +332,6 @@ export const getRecruitmentAnalytics = CatchAsyncError(
   }
 );
 
-export const getAllRecruitmentData = CatchAsyncError(
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // Extract query parameters for pagination and filtering
-      const {
-        page = 1,
-        limit = 10,
-        branch,
-        year,
-        status,
-        position,
-      } = req.query;
-
-      // Build query object for filtering
-      const query: any = {};
-
-      if (branch) {
-        query['generalInfo.branch'] = branch;
-      }
-      if (year) {
-        query['generalInfo.branchYear'] = year;
-      }
-      if (status) {
-        query.status = status;
-      }
-      if (position) {
-        query['generalInfo.positions'] = { $in: [position] }; // Match any document where position is in the positions array
-      }
-
-      // Convert page and limit to numbers
-      const pageNum = parseInt(page as string, 10);
-      const limitNum = parseInt(limit as string, 10);
-      const skip = (pageNum - 1) * limitNum;
-
-      // Fetch total count for pagination
-      const totalDocuments = await RecruitmentModel.countDocuments(query);
-
-      // Fetch recruitment data with pagination and filtering
-      const recruitmentData = await RecruitmentModel.find(query)
-        .skip(skip)
-        .limit(limitNum)
-        .sort({ createdAt: -1 }); // Sort by creation date, newest first
-
-      // Calculate pagination metadata
-      const totalPages = Math.ceil(totalDocuments / limitNum);
-      const hasNextPage = pageNum < totalPages;
-      const hasPrevPage = pageNum > 1;
-
-      // Response
-      res.status(200).json({
-        success: true,
-        data: {
-          recruitmentData,
-          pagination: {
-            totalDocuments,
-            totalPages,
-            currentPage: pageNum,
-            pageSize: limitNum,
-            hasNextPage,
-            hasPrevPage,
-          },
-        },
-      });
-    } catch (error: any) {
-      return next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
 
 
 export const getAllUsers = CatchAsyncError(

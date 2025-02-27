@@ -37,7 +37,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000","https://gdg-on-campus-hit.vercel.app","https://gdghit.site"],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
