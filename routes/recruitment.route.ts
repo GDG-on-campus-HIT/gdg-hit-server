@@ -10,6 +10,7 @@ import {
   getAllRecruitmentData,
   searchRecruitmentData,
   updateRecruitmentData,
+  getAllUsersWithApplications,
 } from "../controllers/recruitment.controller";
 
 const recruitmentRouter = express.Router();
@@ -61,6 +62,14 @@ recruitmentRouter.patch(
   isAuthenticate,
   authorizeRoles("admin"),
   updateRecruitmentData
+);
+
+
+recruitmentRouter.get(
+  "/getAllUsersWithApplications",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  getAllUsersWithApplications
 );
 
 

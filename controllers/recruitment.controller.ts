@@ -2,8 +2,9 @@ import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
-import userModel from "../models/user.model";
-import { Document } from "mongoose";
+import userModel, { IUser } from "../models/user.model";
+import mongoose,{ Document } from "mongoose";
+
 
 // Get all applications with filtering
 export const getApplications = CatchAsyncError(
@@ -46,7 +47,7 @@ export const submitApplication = CatchAsyncError(
         return next(new ErrorHandler("User authentication failed.", 401));
       }
 
-      const userId = (req.user as { _id: string })?._id;
+      const userId = req.user?._id;
 
       if (!userId) {
         return next(new ErrorHandler("User ID is missing in request.", 400));
@@ -269,9 +270,7 @@ export const checkUserRegistration = CatchAsyncError(
   }
 );
 
-
-
-// Deepak ----------? 
+// Deepak ----------?
 export const getAllRecruitmentData = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -289,16 +288,16 @@ export const getAllRecruitmentData = CatchAsyncError(
       const query: any = {};
 
       if (branch) {
-        query['generalInfo.branch'] = branch;
+        query["generalInfo.branch"] = branch;
       }
       if (year) {
-        query['generalInfo.branchYear'] = year;
+        query["generalInfo.branchYear"] = year;
       }
       if (status) {
         query.status = status;
       }
       if (position) {
-        query['generalInfo.positions'] = { $in: [position] }; // Match any document where position is in the positions array
+        query["generalInfo.positions"] = { $in: [position] }; // Match any document where position is in the positions array
       }
 
       // Convert page and limit to numbers
@@ -413,7 +412,9 @@ interface UpdateResponse {
 }
 
 // Flatten update data to use dot notation
-const flattenUpdateData = (data: Partial<IRecruitment>): Record<string, any> => {
+const flattenUpdateData = (
+  data: Partial<IRecruitment>
+): Record<string, any> => {
   const flattened: Record<string, any> = {};
 
   if (data.generalInfo) {
@@ -445,7 +446,11 @@ const flattenUpdateData = (data: Partial<IRecruitment>): Record<string, any> => 
 };
 
 export const updateRecruitmentData = CatchAsyncError(
-  async (req: UpdateRequest, res: Response<UpdateResponse>, next: NextFunction) => {
+  async (
+    req: UpdateRequest,
+    res: Response<UpdateResponse>,
+    next: NextFunction
+  ) => {
     try {
       const { id } = req.params;
       const updateData: Partial<IRecruitment> = req.body;
@@ -461,7 +466,12 @@ export const updateRecruitmentData = CatchAsyncError(
       }
 
       // Validate status if provided
-      if (updateData.status && !["pending", "shortlisted", "rejected", "accepted"].includes(updateData.status)) {
+      if (
+        updateData.status &&
+        !["pending", "shortlisted", "rejected", "accepted"].includes(
+          updateData.status
+        )
+      ) {
         return next(new ErrorHandler("Invalid status value", 400));
       }
 
@@ -469,11 +479,12 @@ export const updateRecruitmentData = CatchAsyncError(
       const flattenedUpdate = flattenUpdateData(updateData);
 
       // Update only the provided fields
-      const updatedRecruitment: RecruitmentDocument | null = await RecruitmentModel.findByIdAndUpdate(
-        id,
-        { $set: flattenedUpdate },
-        { new: true, runValidators: false } // Skip validation for partial updates
-      );
+      const updatedRecruitment: RecruitmentDocument | null =
+        await RecruitmentModel.findByIdAndUpdate(
+          id,
+          { $set: flattenedUpdate },
+          { new: true, runValidators: false } // Skip validation for partial updates
+        );
 
       if (!updatedRecruitment) {
         return next(new ErrorHandler("Recruitment record not found", 404));
@@ -498,8 +509,126 @@ export const updateRecruitmentData = CatchAsyncError(
     } catch (error: any) {
       // Handle duplicate key error specifically
       if (error.code === 11000) {
-        return next(new ErrorHandler("Duplicate key error: email must be unique", 400));
+        return next(
+          new ErrorHandler("Duplicate key error: email must be unique", 400)
+        );
       }
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+interface UserWithApplication {
+  id: string;
+  name: string;
+  email: string;
+  branch: string;
+  branchYear: string;
+  hasApplied: boolean;
+  positions: string[];
+  status: string;
+}
+
+interface Pagination {
+  totalDocuments: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+
+export const getAllUsersWithApplications = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const {
+        q = "",
+        page = "1",
+        limit = "10",
+        branch,
+        year,
+        hasApplied,
+      } = req.query;
+
+      const pageNum = parseInt(page as string, 10) || 1;
+      const limitNum = parseInt(limit as string, 10) || 10;
+      const skip = (pageNum - 1) * limitNum;
+
+      // Build user query with filters
+      const userQuery: any = {};
+      if (q) {
+        userQuery.name = { $regex: q, $options: "i" }; // Case-insensitive search
+      }
+      if (branch) {
+        userQuery.department = branch;
+      }
+
+      // Fetch users with pagination
+      const totalUsers = await userModel.countDocuments(userQuery);
+      const users = await userModel
+        .find(userQuery)
+        .select("name email classRollNo department")
+        .skip(skip)
+        .limit(limitNum);
+
+      // Fetch all recruitment applications
+      const applications = await RecruitmentModel.find().select(
+        "user generalInfo.positions status generalInfo.branchYear"
+      );
+
+      // Map users to include application status
+      const usersWithApplications = users
+        .map((user: any) => {
+          const application = applications.find(
+            (app) => app.user.toString() === user._id.toString()
+          );
+          const userData = {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            branch: user.department || "NA",
+            branchYear: application
+              ? application.generalInfo.branchYear || "NA"
+              : "NA",
+            hasApplied: !!application,
+            positions: application ? application.generalInfo.positions : [],
+            status: application ? application.status : "Not Applied",
+          };
+
+          // Apply hasApplied filter
+          if (hasApplied === "applied" && !userData.hasApplied) return null;
+          if (hasApplied === "not-applied" && userData.hasApplied) return null;
+
+          // Apply year filter (from RecruitmentModel if applied)
+          if (year && year !== "all" && userData.branchYear !== year)
+            return null;
+
+          return userData;
+        })
+        .filter((user) => user !== null); // Remove null entries from filters
+
+      const totalFilteredUsers = usersWithApplications.length;
+      const totalPages = Math.ceil(totalUsers / limitNum);
+      const filteredUsers = usersWithApplications.slice(0, limitNum); // Apply limit after filtering
+
+      const pagination: Pagination = {
+        totalDocuments: totalUsers,
+        totalPages,
+        currentPage: pageNum,
+        pageSize: limitNum,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      };
+
+      res.status(200).json({
+        success: true,
+        data: {
+          usersData: filteredUsers,
+          pagination,
+        },
+      });
+    } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
   }

@@ -494,3 +494,116 @@ export const sendPromotionMail = CatchAsyncError(
     }
   }
 );
+
+
+
+
+// --------------------------------->
+// Define interfaces explicitly for clarity
+interface Recipient {
+  name: string;
+  email: string;
+  position: string;
+}
+
+interface EmailStatus {
+  index: number;
+  name: string;
+  email: string;
+  position: string;
+  status: "success" | "failed";
+  message: string;
+}
+
+export const sendRecruitmentEmails = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { recipients, template, subject, whatsappLink } = req.body;
+      const EMAIL_DELAY_MS = 10000;
+
+      // Validation
+      if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+        return next(new ErrorHandler("Please provide a valid list of recipients", 400));
+      }
+      if (!template || typeof template !== "string") {
+        return next(new ErrorHandler("Please provide a valid HTML template", 400));
+      }
+      if (!subject || typeof subject !== "string") {
+        return next(new ErrorHandler("Please provide a valid subject", 400));
+      }
+      if (!whatsappLink || typeof whatsappLink !== "string") {
+        return next(new ErrorHandler("Please provide a valid WhatsApp link", 400));
+      }
+
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+      const sendSingleEmail = async ({ name, email, position }: Recipient, index: number): Promise<EmailStatus> => {
+        if (!name || !email || !position) {
+          return {
+            index,
+            name,
+            email,
+            position,
+            status: "failed",
+            message: "Missing name, email, or position",
+          };
+        }
+
+        // Replace dynamic placeholders in the template
+        let html = template
+          .replace(/\${name}/g, name)
+          .replace(/\${position}/g, position)
+          .replace(/\${whatsappLink}/g, whatsappLink); // Use whatsappLink from request body
+
+        try {
+          await sendMail({
+            email, // Use the recipient's email, not hardcoded
+            subject,
+            template: html,
+          } as any);
+
+          return {
+            index,
+            name,
+            email,
+            position,
+            status: "success",
+            message: `Email sent successfully to ${email}`,
+          };
+        } catch (error: any) {
+          console.error(`Error sending email to ${email}:`, error);
+          return {
+            index,
+            name,
+            email,
+            position,
+            status: "failed",
+            message: `Failed to send email to ${email}: ${error.message}`,
+          };
+        }
+      };
+
+      const results: EmailStatus[] = [];
+
+      for (let i = 0; i < recipients.length; i++) {
+        const result = await sendSingleEmail(recipients[i], i);
+        results.push(result);
+        if (i < recipients.length - 1) {
+          await delay(EMAIL_DELAY_MS);
+        }
+      }
+
+      const successCount = results.filter((result) => result.status === "success").length;
+      const failedCount = results.length - successCount;
+
+      res.status(200).json({
+        success: true,
+        message: `Email sending completed. ${successCount} emails sent successfully, ${failedCount} failed`,
+        totalProcessed: results.length,
+        statusList: results,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
