@@ -343,7 +343,7 @@ export const getAllRecruitmentData = CatchAsyncError(
 export const searchRecruitmentData = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { q, page = 1, limit = 10, branch, year, position } = req.query;
+      const { q, page = 1, limit = 10, branch, year, position, status } = req.query;
       const query: any = {};
 
       // Advanced search across multiple fields
@@ -360,6 +360,7 @@ export const searchRecruitmentData = CatchAsyncError(
       if (branch) query["generalInfo.branch"] = branch;
       if (year) query["generalInfo.branchYear"] = year;
       if (position) query["generalInfo.positions"] = { $in: [position] };
+      if (status) query.status = status; // Add status filter
 
       const pageNum = parseInt(page as string, 10);
       const limitNum = parseInt(limit as string, 10);

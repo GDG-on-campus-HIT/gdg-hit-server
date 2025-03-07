@@ -25,8 +25,8 @@ analyticsRoute.get(
 
   analyticsRoute.get(
     "/getAllUsers",
-    isAuthenticate,
-    authorizeRoles("admin"),
+    // isAuthenticate,
+    // authorizeRoles("admin"),
     getAllUsers
   );
 
