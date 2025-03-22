@@ -9,21 +9,17 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # Checkout code
       - name: Checkout
         uses: actions/checkout@v3
 
-      # Authenticate with Google Cloud
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-      # Set up Google Cloud SDK
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
 
-      # Create .env and Build Docker Image
       - name: Create .env and Build Docker Image
         run: |
           cat << EOF > .env
@@ -53,17 +49,16 @@ jobs:
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
 
-      # Push to Google Container Registry
       - name: Push Docker Image
         run: |
           gcloud auth configure-docker
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/gdg-server
 
-      # Deploy to Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy gdg-server \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/gdg-server \
             --region asia-south1 \
             --platform managed \
+            --allow-unauthenticated \
             --set-env-vars "ORIGIN=${{ secrets.ORIGIN }},FRONTEND_HOST=${{ secrets.FRONTEND_HOST }},NODE_ENV=${{ secrets.NODE_ENV }},DB_URL=${{ secrets.DB_URL }},CLOUD_NAME=${{ secrets.CLOUD_NAME }},CLOUD_API_KEY=${{ secrets.CLOUD_API_KEY }},CLOUD_SECRET_KEY=${{ secrets.CLOUD_SECRET_KEY }},REDIS_URL=${{ secrets.REDIS_URL }},ACTIVATION_SECRET=${{ secrets.ACTIVATION_SECRET }},ACCESS_TOKEN=$(echo ${{ secrets.ACCESS_TOKEN_BASE64 }} | base64 -d),REFRESH_TOKEN=$(echo ${{ secrets.REFRESH_TOKEN_BASE64 }} | base64 -d),ACCESS_TOKEN_EXPIRE=${{ secrets.ACCESS_TOKEN_EXPIRE }},REFRESH_TOKEN_EXPIRE=${{ secrets.REFRESH_TOKEN_EXPIRE }},SMTP_HOST=${{ secrets.SMTP_HOST }},SMTP_PORT=${{ secrets.SMTP_PORT }},SMTP_SERVICE=${{ secrets.SMTP_SERVICE }},SMTP_MAIL=${{ secrets.SMTP_MAIL }},SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}"
