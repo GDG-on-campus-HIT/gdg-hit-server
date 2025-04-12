@@ -19,6 +19,7 @@ import adminRoute from "./routes/admin.route";
 import mailRoute from "./routes/mail.route";
 import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
+import blogRouter from "./routes/blog.route";
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -35,9 +36,14 @@ app.use(cookieParser());
 // cors = cross origin resource sharing
 app.use(
   cors({
-    origin: ["http://localhost:3000","https://gdg-on-campus-hit.vercel.app","https://gdghit.site","https://admin.gdghit.site"],
+    origin: [
+      "http://localhost:3000",
+      "https://gdg-on-campus-hit.vercel.app",
+      "https://gdghit.site",
+      "https://admin.gdghit.site",
+    ],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -61,6 +67,7 @@ app.use("/api/v1", adminRoute);
 app.use("/api/v1", mailRoute);
 app.use("/api/v1", analyticsRoute);
 app.use("/api/v1", recruitmentRouter);
+app.use("/api/v1", blogRouter);
 
 //google auth route
 app.get(
