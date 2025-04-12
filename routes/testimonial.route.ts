@@ -5,7 +5,7 @@ import { addTestimonial, updateTestimonial, deleteTestimonial, getTestimonials, 
 const testimonialRouter = express.Router();
 
 // Add a new testimonial
-testimonialRouter.post('/testimonial', isAuthenticate, authorizeRoles("admin"), addTestimonial);
+testimonialRouter.post('/testimonial', addTestimonial);
 
 // Update a testimonial by ID
 testimonialRouter.put('/testimonial/:id', isAuthenticate, authorizeRoles("admin"), updateTestimonial);

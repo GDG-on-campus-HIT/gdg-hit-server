@@ -35,9 +35,9 @@ app.use(cookieParser());
 // cors = cross origin resource sharing
 app.use(
   cors({
-    origin: ["http://localhost:3000","https://gdg-on-campus-hit.vercel.app","https://gdghit.site"],
+    origin: ["http://localhost:3000","https://gdg-on-campus-hit.vercel.app","https://gdghit.site","https://admin.gdghit.site"],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -72,7 +72,7 @@ app.get(
       secure: true,
       sameSite: "none",
       maxAge: 10 * 60 * 1000,
-      ...(process.env.NODE_ENV === "production" && { domain: "gdghit.site" }),
+      ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
     });
     next();
   },

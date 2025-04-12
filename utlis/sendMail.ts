@@ -28,7 +28,7 @@ const sendMail = async(options : EmailOptions): Promise <void> =>{
     const html:string = template;
 
     const mailOptions = {
-        from: `"Data Science Club HIT" <${process.env.SMTP_MAIL}>`,
+        from: `"GDG on campus HIT" <recruitment@gdghit.site>`,
         to:email,
         subject,
         html

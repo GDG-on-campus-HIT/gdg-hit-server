@@ -11,7 +11,6 @@ interface IGeneralInfo {
   positions: string[];
 }
 
-
 // Step 3: Role-Specific Interfaces
 interface IWebDeveloper {
   technologies?: string;
@@ -162,10 +161,7 @@ const recruitmentSchema = new Schema<IRecruitment>(
         learning: String,
       },
       publicRelations: {
-        mockPost: {
-          type: String,
-          maxLength: 150,
-        },
+        mockPost: String,
         experience: String,
         preferredPlatforms: String,
       },

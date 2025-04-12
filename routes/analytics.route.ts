@@ -1,6 +1,6 @@
 import { authorizeRoles, isAuthenticate } from "../middleware/auth";
 import express from "express";
-import { certificateAnalytics, getEventAnalytics, getUserAnalytics } from "../controllers/analytics.controller";
+import { getAllUsers, getRecruitmentAnalytics, getUserAnalytics } from "../controllers/analytics.controller";
 
 const analyticsRoute = express.Router();
 
@@ -12,18 +12,24 @@ analyticsRoute.get(
 );
 
 analyticsRoute.get(
-    "/getEventAnalytics",
+    "/getRecruitmentAnalytics",
     isAuthenticate,
     authorizeRoles("admin"),
-  getEventAnalytics
+    getRecruitmentAnalytics
   );
 
+
+
+
+
+
   analyticsRoute.get(
-    "/certificateAnalytics",
-    isAuthenticate,
-    authorizeRoles("admin"),
-  certificateAnalytics
+    "/getAllUsers",
+    // isAuthenticate,
+    // authorizeRoles("admin"),
+    getAllUsers
   );
+
 
 
 export default analyticsRoute;

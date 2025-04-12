@@ -5,6 +5,7 @@ import ErrorHandler from "../utlis/ErrorHandler";
 import { eventModel } from "../models/events.model";
 import { eventRegistrationModel } from "../models/events.model";
 import { certificateModel } from "../models/certificate.model";
+import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
 
 export const getUserAnalytics = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -20,12 +21,8 @@ export const getUserAnalytics = CatchAsyncError(
             count: { $sum: 1 },
           },
         },
-        {
-          $sort: { "_id.year": -1, "_id.month": -1 },
-        },
-        {
-          $limit: 12,
-        },
+        { $sort: { "_id.year": -1, "_id.month": -1 } },
+        { $limit: 12 },
         {
           $project: {
             month: {
@@ -77,9 +74,7 @@ export const getUserAnalytics = CatchAsyncError(
             count: { $sum: 1 },
           },
         },
-        {
-          $sort: { "_id.year": -1, "_id.month": -1, "_id.day": -1 },
-        },
+        { $sort: { "_id.year": -1, "_id.month": -1, "_id.day": -1 } },
         {
           $project: {
             date: {
@@ -120,9 +115,7 @@ export const getUserAnalytics = CatchAsyncError(
             count: { $sum: 1 },
           },
         },
-        {
-          $sort: { count: -1 },
-        },
+        { $sort: { count: -1 } },
         {
           $project: {
             department: "$_id",
@@ -152,6 +145,10 @@ export const getUserAnalytics = CatchAsyncError(
         },
       ]);
 
+      // 7. Get all users
+      const allUsers = await userModel.find().sort({ createdAt: -1 });
+      // .select("name email role createdAt");
+
       // Combine the results
       res.status(200).json({
         success: true,
@@ -161,6 +158,7 @@ export const getUserAnalytics = CatchAsyncError(
           dailyRegistrations,
           departmentWiseRegistrations,
           roleWiseRegistrations,
+          allUsers,
         },
       });
     } catch (error: any) {
@@ -169,720 +167,240 @@ export const getUserAnalytics = CatchAsyncError(
   }
 );
 
-export const getEventAnalytics = CatchAsyncError(
+
+export const getRecruitmentAnalytics = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // 1. Total number of events
-      const totalEvents = await eventModel.countDocuments();
+      // General Statistics
+      const totalApplicants = await RecruitmentModel.countDocuments();
+      const applicantsPerBranch = await RecruitmentModel.aggregate([
+        { $group: { _id: "$generalInfo.branch", count: { $sum: 1 } } },
+      ]);
+      const applicantsPerYear = await RecruitmentModel.aggregate([
+        { $group: { _id: "$generalInfo.branchYear", count: { $sum: 1 } } },
+      ]);
+      const applicantsPerPosition = await RecruitmentModel.aggregate([
+        { $unwind: "$generalInfo.positions" },
+        { $group: { _id: "$generalInfo.positions", count: { $sum: 1 } } },
+      ]);
+      const applicantsPerStatus = await RecruitmentModel.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]);
 
-      // 2. Upcoming vs. past events
-      const upcomingPastEvents = await eventModel.aggregate([
+      // Position-Specific Analytics
+      const topAppliedPositions = await RecruitmentModel.aggregate([
+        { $unwind: "$generalInfo.positions" },
+        { $group: { _id: "$generalInfo.positions", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+      ]);
+      const leastAppliedPositions = await RecruitmentModel.aggregate([
+        { $unwind: "$generalInfo.positions" },
+        { $group: { _id: "$generalInfo.positions", count: { $sum: 1 } } },
+        { $sort: { count: 1 } },
+        { $limit: 5 },
+      ]);
+      const multipleRoleApplicants = await RecruitmentModel.aggregate([
         {
-          $group: {
-            _id: "$is_upcoming",
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $project: {
-            status: {
+          $addFields: {
+            numPositionsApplied: {
               $cond: {
-                if: { $eq: ["$_id", true] },
-                then: "Upcoming",
-                else: "Past",
-              },
-            },
-            count: 1,
-          },
+                if: { $isArray: "$generalInfo.positions" },
+                then: { $size: "$generalInfo.positions" },
+                else: 0
+              }
+            }
+          }
         },
+        { $match: { numPositionsApplied: { $gt: 1 } } },
+        { $count: "multipleRoleApplicants" }
       ]);
 
-      // 3. Event categories breakdown
-      const eventCategories = await eventModel.aggregate([
-        {
-          $group: {
-            _id: "$category",
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $sort: { count: -1 },
-        },
+      // Branch & Year-Based Analytics
+      const mostPopularPositionPerBranch = await RecruitmentModel.aggregate([
+        { $unwind: "$generalInfo.positions" },
+        { $group: { _id: { branch: "$generalInfo.branch", position: "$generalInfo.positions" }, count: { $sum: 1 } } },
+        { $sort: { "_id.branch": 1, count: -1 } },
+        { $group: { _id: "$_id.branch", position: { $first: "$_id.position" } } },
+      ]);
+      const mostPopularPositionPerYear = await RecruitmentModel.aggregate([
+        { $unwind: "$generalInfo.positions" },
+        { $group: { _id: { year: "$generalInfo.branchYear", position: "$generalInfo.positions" }, count: { $sum: 1 } } },
+        { $sort: { "_id.year": 1, count: -1 } },
+        { $group: { _id: "$_id.year", position: { $first: "$_id.position" } } },
+      ]);
+      const branchHighestSelectionRate = await RecruitmentModel.aggregate([
+        { $match: { status: "accepted" } },
+        { $group: { _id: "$generalInfo.branch", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]);
+      const branchHighestRejectionRate = await RecruitmentModel.aggregate([
+        { $match: { status: "rejected" } },
+        { $group: { _id: "$generalInfo.branch", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]);
+      const yearWiseSelectionRate = await RecruitmentModel.aggregate([
+        { $group: { _id: { year: "$generalInfo.branchYear", status: "$status" }, count: { $sum: 1 } } },
+        { $group: { _id: "$_id.year", accepted: { $sum: { $cond: [ { $eq: ["$_id.status", "accepted"] }, "$count", 0 ] } }, total: { $sum: "$count" } } },
+        { $project: { year: "$_id", selectionRate: { $multiply: [{ $divide: ["$accepted", "$total"] }, 100] } } },
       ]);
 
-      // 4. Total number of registrations
-      const totalRegistrations = await eventRegistrationModel.countDocuments();
-
-      // 5. Monthly registration trends for the last 12 months
-      const monthlyRegistrationTrends = await eventRegistrationModel.aggregate([
+      // Application Timeline Analysis
+      const applicationsOverTime = await RecruitmentModel.aggregate([
+        { $group: { _id: { month: { $month: "$createdAt" }, year: { $year: "$createdAt" } }, count: { $sum: 1 } } },
+        { $sort: { "_id.year": -1, "_id.month": -1 } },
+      ]);
+      const peakApplicationHour = await RecruitmentModel.aggregate([
+        { $group: { _id: { hour: { $hour: "$createdAt" } }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 1 },
+      ]);
+      const avgShortlistingTime = await RecruitmentModel.aggregate([
+        { $match: { status: "shortlisted" } },
+        { $project: { diff: { $subtract: ["$updatedAt", "$createdAt"] } } },
+        { $group: { _id: null, avgTime: { $avg: "$diff" } } },
+      ]);
+      const dailyApplications = await RecruitmentModel.aggregate([
         {
           $group: {
             _id: {
               year: { $year: "$createdAt" },
               month: { $month: "$createdAt" },
+              day: { $dayOfMonth: "$createdAt" }
             },
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $sort: { "_id.year": -1, "_id.month": -1 },
-        },
-        {
-          $limit: 12,
+            count: { $sum: 1 }
+          }
         },
         {
           $project: {
-            month: {
-              $concat: [
-                {
-                  $arrayElemAt: [
-                    [
-                      "Jan",
-                      "Feb",
-                      "Mar",
-                      "Apr",
-                      "May",
-                      "Jun",
-                      "Jul",
-                      "Aug",
-                      "Sep",
-                      "Oct",
-                      "Nov",
-                      "Dec",
-                    ],
-                    { $subtract: ["$_id.month", 1] },
-                  ],
-                },
-                "-",
-                { $toString: "$_id.year" },
-              ],
+            _id: 0,
+            date: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: {
+                  $dateFromParts: {
+                    year: "$_id.year",
+                    month: "$_id.month",
+                    day: "$_id.day"
+                  }
+                }
+              }
             },
-            count: 1,
-          },
+            count: 1
+          }
         },
+        { $sort: { date: 1 } } // Sort by date in ascending order
       ]);
 
-      // 6. Top events by number of registrations
-      const topEventsByRegistrations = await eventRegistrationModel.aggregate([
-        {
-          $group: {
-            _id: "$event",
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $sort: { count: -1 },
-        },
-        {
-          $limit: 5,
-        },
-        {
-          $lookup: {
-            from: "events",
-            localField: "_id",
-            foreignField: "_id",
-            as: "eventDetails",
-          },
-        },
-        {
-          $unwind: "$eventDetails",
-        },
-        {
-          $project: {
-            eventName: "$eventDetails.name",
-            count: 1,
-          },
-        },
-      ]);
 
-      // 7. Daily registrations for the last month
-      const dailyRegistrationsLastMonth =
-        await eventRegistrationModel.aggregate([
-          {
-            $match: {
-              createdAt: {
-                $gte: new Date(new Date().setDate(new Date().getDate() - 30)),
-              },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                day: { $dayOfMonth: "$createdAt" },
-                month: { $month: "$createdAt" },
-                year: { $year: "$createdAt" },
-              },
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $sort: {
-              "_id.year": 1,
-              "_id.month": 1,
-              "_id.day": 1,
-            },
-          },
-          {
-            $project: {
-              date: {
-                $concat: [
-                  { $toString: "$_id.day" },
-                  "-",
-                  {
-                    $arrayElemAt: [
-                      [
-                        "Jan",
-                        "Feb",
-                        "Mar",
-                        "Apr",
-                        "May",
-                        "Jun",
-                        "Jul",
-                        "Aug",
-                        "Sep",
-                        "Oct",
-                        "Nov",
-                        "Dec",
-                      ],
-                      { $subtract: ["$_id.month", 1] },
-                    ],
-                  },
-                  "-",
-                  { $toString: "$_id.year" },
-                ],
-              },
-              count: 1,
-            },
-          },
-        ]);
-
-      // 8. Department-wise registration distribution
-      const departmentWiseDistribution = await eventRegistrationModel.aggregate(
-        [
-          {
-            $group: {
-              _id: "$department",
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $sort: { count: -1 },
-          },
-        ]
-      );
-
-      // 9. Attendance analytics (percentage of users who attended)
-      const attendanceAnalytics = await eventRegistrationModel.aggregate([
-        {
-          $group: {
-            _id: "$attendance",
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $project: {
-            status: {
-              $cond: {
-                if: { $eq: ["$_id", true] },
-                then: "Attended",
-                else: "Not Attended",
-              },
-            },
-            count: 1,
-          },
-        },
-      ]);
-
-      // 10. Revenue analytics (sum of registration fees, if monetary)
-      const revenueAnalytics = await eventModel.aggregate([
-        {
-          $lookup: {
-            from: "eventregistrations",
-            localField: "_id",
-            foreignField: "event",
-            as: "registrations",
-          },
-        },
-        {
-          $unwind: "$registrations",
-        },
-        {
-          $project: {
-            eventName: "$name",
-            registrationFee: {
-              $cond: {
-                if: { $ne: ["$registrationFee", "Free"] }, // Check if the fee is not "Free"
-                then: {
-                  $convert: {
-                    input: "$registrationFee",
-                    to: "double",
-                    onError: 0,
-                    onNull: 0,
-                  },
-                },
-                else: 0, // Default to 0 for "Free"
-              },
-            },
-          },
-        },
-        {
-          $group: {
-            _id: "$_id",
-            totalRevenue: { $sum: "$registrationFee" },
-            eventName: { $first: "$eventName" },
-          },
-        },
-        {
-          $sort: { totalRevenue: -1 },
-        },
-      ]);
-
-      // 11. Registration status (issued certificates)
-      const certificateStatusAnalytics = await eventRegistrationModel.aggregate(
-        [
-          {
-            $project: {
-              certificateIssued: {
-                $cond: {
-                  if: { $ifNull: ["$certificate", false] },
-                  then: true,
-                  else: false,
-                },
-              },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                certificateIssued: "$certificateIssued",
-              },
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              certificateIssued: "$_id.certificateIssued",
-              count: 1,
-              status: {
-                $cond: {
-                  if: { $eq: ["$certificateIssued", true] },
-                  then: "Certificate Issued",
-                  else: "Certificate Not Issued",
-                },
-              },
-            },
-          },
-        ]
-      );
-
-      // 12. Event by certificate issued
-      const eventWiseCertificateStatusAnalytics =
-        await eventRegistrationModel.aggregate([
-          {
-            $lookup: {
-              from: "events", // Replace with the actual collection name if different
-              localField: "event",
-              foreignField: "_id",
-              as: "eventDetails",
-            },
-          },
-          {
-            $unwind: "$eventDetails",
-          },
-          {
-            $project: {
-              eventName: "$eventDetails.name",
-              certificateIssued: {
-                $cond: {
-                  if: { $ifNull: ["$certificate", false] },
-                  then: true,
-                  else: false,
-                },
-              },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                eventName: "$eventName",
-                certificateIssued: "$certificateIssued",
-              },
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $group: {
-              _id: "$_id.eventName",
-              certificateIssuedData: {
-                $push: {
-                  certificateIssued: "$_id.certificateIssued",
-                  count: "$count",
-                  status: {
-                    $cond: {
-                      if: { $eq: ["$_id.certificateIssued", true] },
-                      then: "Certificate Issued",
-                      else: "Certificate Not Issued",
-                    },
-                  },
-                },
-              },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              eventName: "$_id",
-              certificateIssuedData: 1,
-            },
-          },
-        ]);
-
-      // Respond with all analytics data
+      // Response
       res.status(200).json({
-        totalEvents,
-        upcomingPastEvents,
-        eventCategories,
-        totalRegistrations,
-        monthlyRegistrationTrends,
-        topEventsByRegistrations,
-        dailyRegistrationsLastMonth,
-        departmentWiseDistribution,
-        attendanceAnalytics,
-        revenueAnalytics,
-        certificateStatusAnalytics,
-        eventWiseCertificateStatusAnalytics,
+        success: true,
+        data: {
+          generalStatistics: {
+            totalApplicants,
+            applicantsPerBranch,
+            applicantsPerYear,
+            applicantsPerPosition,
+            applicantsPerStatus,
+          },
+          positionSpecificAnalytics: {
+            topAppliedPositions,
+            leastAppliedPositions,
+            multipleRoleApplicants,
+          },
+          branchYearBasedAnalytics: {
+            mostPopularPositionPerBranch,
+            mostPopularPositionPerYear,
+            branchHighestSelectionRate,
+            branchHighestRejectionRate,
+            yearWiseSelectionRate,
+          },
+          applicationTimelineAnalysis: {
+            applicationsOverTime,
+            peakApplicationHour,
+            avgShortlistingTime,
+            dailyApplications
+          },
+        },
       });
-    } catch (error:any) {
-        return next(new ErrorHandler(error.message, 500));
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
 
-export const certificateAnalytics = CatchAsyncError(
+
+
+export const getAllUsers = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // 1. Overall Certificate Issuance Analytics
+      // Extract query parameters for pagination and filtering
+      const {
+        page = 1,
+        limit = 10,
+        role,
+        department,
+        isVerified,
+        name,
+      } = req.query;
 
-      // Total Certificates Issued
-      const totalCertificatesIssued = await certificateModel.countDocuments();
+      // Build query object for filtering
+      const query: any = {};
 
-      // Total Unique Events with Certificates Issued
-      const distinctEvents = await certificateModel.distinct("event");
-      const totalUniqueEventsWithCertificates = distinctEvents.length;
+      if (role) {
+        query.role = role;
+      }
+      if (department) {
+        query.department = department;
+      }
+      if (isVerified !== undefined) {
+        query.isVerified = isVerified === 'true'; // Convert string 'true'/'false' to boolean
+      }
+      if (name) {
+        query.name = { $regex: new RegExp(name as string, 'i') }; // Case-insensitive name search
+      }
 
-      // Percentage of Events with Issued Certificates
-      const totalEvents = await eventModel.countDocuments();
-      const percentageEventsWithCertificates =
-        (totalUniqueEventsWithCertificates / totalEvents) * 100;
+      // Convert page and limit to numbers
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const skip = (pageNum - 1) * limitNum;
 
-      // Certificates Issued Over Time (Last 12 Months)
-      const certificatesIssuedOverTime = await certificateModel.aggregate([
-        {
-          $match: {
-            createdAt: {
-              $gte: new Date(new Date().setMonth(new Date().getMonth() - 12)),
-            },
-          },
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]);
+      // Fetch total count for pagination
+      const totalDocuments = await userModel.countDocuments(query);
 
-      // Daily Certificate Issuance (Last 30 Days)
-      const dailyCertificateIssuance = await certificateModel.aggregate([
-        {
-          $match: {
-            createdAt: {
-              $gte: new Date(new Date().setDate(new Date().getDate() - 30)),
-            },
-          },
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]);
+      // Fetch user data with pagination and filtering
+      const users = await userModel
+        .find(query)
+        .select('-password') // Exclude password field from response
+        .skip(skip)
+        .limit(limitNum)
+        .sort({ createdAt: -1 }); // Sort by creation date, newest first
 
-      // 2. Event-Wise Certificate Analytics
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalDocuments / limitNum);
+      const hasNextPage = pageNum < totalPages;
+      const hasPrevPage = pageNum > 1;
 
-      // Event-Wise Certificate Issuance
-      const eventWiseCertificateIssuance = await certificateModel.aggregate([
-        {
-          $lookup: {
-            from: "events",
-            localField: "event",
-            foreignField: "_id",
-            as: "eventDetails",
-          },
-        },
-        { $unwind: "$eventDetails" },
-        {
-          $group: {
-            _id: "$eventDetails.name",
-            totalCertificates: { $sum: 1 },
-          },
-        },
-      ]);
-
-      // Event-Wise Certificate Download Count
-      const eventWiseDownloadCount = await certificateModel.aggregate([
-        {
-          $lookup: {
-            from: "events",
-            localField: "event",
-            foreignField: "_id",
-            as: "eventDetails",
-          },
-        },
-        { $unwind: "$eventDetails" },
-        {
-          $group: {
-            _id: "$eventDetails.name",
-            totalDownloads: { $sum: "$download" },
-          },
-        },
-      ]);
-
-      // Event-Wise Mail Sent Status
-      const eventMailSentStatus = await certificateModel.aggregate([
-        {
-          $lookup: {
-            from: "events",
-            localField: "event",
-            foreignField: "_id",
-            as: "eventDetails",
-          },
-        },
-        { $unwind: "$eventDetails" },
-        {
-          $group: {
-            _id: "$eventDetails.name",
-            mailSentTrue: {
-              $sum: { $cond: [{ $eq: ["$mail_sent", true] }, 1, 0] },
-            },
-            mailSentFalse: {
-              $sum: { $cond: [{ $eq: ["$mail_sent", false] }, 1, 0] },
-            },
-          },
-        },
-      ]);
-
-      // 3. User-Specific Certificate Analytics
-
-      // Top Users by Certificates Downloaded
-      const topUsersByDownloads = await certificateModel.aggregate([
-        {
-          $group: {
-            _id: "$user",
-            totalDownloads: { $sum: "$download" },
-          },
-        },
-        { $sort: { totalDownloads: -1 } },
-        { $limit: 5 }, // Top 5 users
-      ]);
-
-      // User Demographics for Certificate Holders
-      const userDemographics = await certificateModel.aggregate([
-        {
-          $lookup: {
-            from: "users",
-            localField: "user",
-            foreignField: "_id",
-            as: "userDetails",
-          },
-        },
-        { $unwind: "$userDetails" },
-        {
-          $group: {
-            _id: "$userDetails.department",
-            totalCertificates: { $sum: 1 },
-          },
-        },
-      ]);
-
-      // User Registration vs. Certificate Issuance
-      const userRegistrationVsCertificate = await certificateModel.aggregate([
-        {
-          $lookup: {
-            from: "eventregistrations",
-            localField: "registration",
-            foreignField: "_id",
-            as: "registrationDetails",
-          },
-        },
-        { $unwind: "$registrationDetails" },
-        {
-          $group: {
-            _id: "$registrationDetails.event",
-            registeredCount: { $sum: 1 },
-            certificateIssuedCount: {
-              $sum: { $cond: [{ $ne: ["$certificate.url", null] }, 1, 0] },
-            },
-          },
-        },
-      ]);
-
-      // 4. Mail Sent Status
-
-      // Overall Mail Sent Status
-      const overallMailSentStatus = await certificateModel.aggregate([
-        {
-          $group: {
-            _id: "$mail_sent",
-            count: { $sum: 1 },
-          },
-        },
-      ]);
-
-      // Event-Based Mail Sent Status
-      const eventBasedMailSentStatus = await certificateModel.aggregate([
-        {
-          $lookup: {
-            from: "events",
-            localField: "event",
-            foreignField: "_id",
-            as: "eventDetails",
-          },
-        },
-        { $unwind: "$eventDetails" },
-        {
-          $group: {
-            _id: "$eventDetails.name",
-            mailSentTrue: {
-              $sum: { $cond: [{ $eq: ["$mail_sent", true] }, 1, 0] },
-            },
-            mailSentFalse: {
-              $sum: { $cond: [{ $eq: ["$mail_sent", false] }, 1, 0] },
-            },
-          },
-        },
-      ]);
-
-      // Certificates Pending Email
-      const certificatesPendingEmail = await certificateModel.countDocuments({
-        mail_sent: false,
-      });
-
-      // 5. Certificate Download Statistics
-
-      // Total Certificate Downloads
-      const totalCertificateDownloads = await certificateModel.aggregate([
-        {
-          $group: {
-            _id: null,
-            totalDownloads: { $sum: "$download" },
-          },
-        },
-      ]);
-
-      // Average Downloads per Certificate
-      const avgDownloadsPerCertificate = await certificateModel.aggregate([
-        {
-          $group: {
-            _id: null,
-            avgDownloads: { $avg: "$download" },
-          },
-        },
-      ]);
-
-      // Most Downloaded Certificates
-      const mostDownloadedCertificates = await certificateModel.aggregate([
-        {
-          $sort: { download: -1 },
-        },
-        { $limit: 5 },
-      ]);
-
-      // Download Trends Over Time (Last 6 Months)
-      const downloadTrendsOverTime = await certificateModel.aggregate([
-        {
-          $match: {
-            createdAt: {
-              $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)),
-            },
-          },
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-            totalDownloads: { $sum: "$download" },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]);
-
-      const downloadTrendsDaily = await certificateModel.aggregate([
-        {
-          $match: {
-            createdAt: {
-              $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)),
-            },
-          },
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            totalDownloads: { $sum: "$download" },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]);
-      
-
-      // 8. Failure/Error Reports
-
-      // Certificates with Missing Information
-      const certificatesWithMissingInfo = await certificateModel.countDocuments(
-        {
-          $or: [
-            { certificate: { $exists: false } },
-            { "certificate.url": { $exists: false } },
-          ],
-        }
-      );
-
-      // Email Send Failures (optional: integration with logs or failure tracking)
-      const emailSendFailures = await certificateModel.countDocuments({
-        mail_sent: false,
-      });
-
-    
-
-      // Returning aggregated analytics
+      // Response
       res.status(200).json({
-        totalCertificatesIssued,
-        totalUniqueEventsWithCertificates,
-        percentageEventsWithCertificates,
-        certificatesIssuedOverTime,
-        dailyCertificateIssuance,
-        eventWiseCertificateIssuance,
-        eventWiseDownloadCount,
-        eventMailSentStatus,
-        topUsersByDownloads,
-        userDemographics,
-        userRegistrationVsCertificate,
-        overallMailSentStatus,
-        eventBasedMailSentStatus,
-        certificatesPendingEmail,
-        totalCertificateDownloads,
-        avgDownloadsPerCertificate,
-        mostDownloadedCertificates,
-        downloadTrendsOverTime,
-        downloadTrendsDaily,
-        certificatesWithMissingInfo,
-        emailSendFailures,
+        success: true,
+        data: {
+          users,
+          pagination: {
+            totalDocuments,
+            totalPages,
+            currentPage: pageNum,
+            pageSize: limitNum,
+            hasNextPage,
+            hasPrevPage,
+          },
+        },
       });
-    } catch (error:any) {
-        return next(new ErrorHandler(error.message, 500));
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
     }
   }
 );
