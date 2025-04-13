@@ -6,6 +6,7 @@ export interface IBlog extends Document {
   slug: string;
   description: string;
   content: string;
+  isListed: boolean;
   imageUrl: string;
   authorId: mongoose.Types.ObjectId;
   tags: string[];
@@ -17,53 +18,23 @@ export interface IBlog extends Document {
 
 const blogSchema: Schema<IBlog> = new Schema<IBlog>(
   {
-    category: {
-      type: String,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    slug: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    content: {
-      type: String,
-      required: true,
-    },
-    imageUrl: {
-      type: String,
-      required: true,
-    },
+    category: { type: String, required: true },
+    title: { type: String, required: true, trim: true },
+    slug: { type: String, required: true, unique: true },
+    description: { type: String, required: true, trim: true },
+    content: { type: String, required: true },
+    imageUrl: { type: String, required: true },
     authorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    tags: {
-      type: [String],
-      default: [],
-    },
-    isPublished: {
-      type: Boolean,
-      default: false,
-    },
-    publishedAt: {
-      type: Date,
-    },
+    isListed: { type: Boolean, default: true },
+    tags: { type: [String], default: [] },
+    isPublished: { type: Boolean, default: false },
+    publishedAt: { type: Date },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 const Blog = mongoose.model<IBlog>("Blog", blogSchema);
