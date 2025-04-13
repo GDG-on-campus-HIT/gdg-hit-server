@@ -56,7 +56,7 @@ export const addBlog = CatchAsyncError(
 export const getBlogBySlug = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const { slug } = req.params;
-    const blog = await Blog.findOne({ slug }).populate(
+    const blog = await Blog.findOne({ slug, isListed: true }).populate(
       "authorId",
       "name email avatarUrl"
     );
@@ -74,10 +74,10 @@ export const getBlogBySlug = CatchAsyncError(
 // Get blog by ID
 export const getBlogById = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const blog = await Blog.findById(req.params.id).populate(
-      "authorId",
-      "name email avatarUrl"
-    );
+    const blog = await Blog.findOne({
+      _id: req.params.id,
+      isListed: true,
+    }).populate("authorId", "name email avatarUrl");
 
     if (!blog) {
       return next(new ErrorHandler("Blog post not found.", 404));
@@ -89,10 +89,10 @@ export const getBlogById = CatchAsyncError(
   }
 );
 
-// Get all published blogs
+// Get all published + listed blogs
 export const getAllBlogs = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const blogs = await Blog.find({ isPublished: true })
+    const blogs = await Blog.find({ isPublished: true, isListed: true })
       .sort({ publishedAt: -1 })
       .populate("authorId", "name");
 
@@ -163,8 +163,8 @@ export const updateBlog = CatchAsyncError(
   }
 );
 
-// Delete blog by ID
-export const deleteBlog = CatchAsyncError(
+// Soft delete by user
+export const softDeleteBlog = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const blog = await Blog.findById(req.params.id);
 
@@ -172,11 +172,46 @@ export const deleteBlog = CatchAsyncError(
       return next(new ErrorHandler("Blog post not found.", 404));
     }
 
-    await Blog.findByIdAndDelete(req.params.id);
+    blog.isListed = false;
+    await blog.save();
 
     res.status(200).json({
       success: true,
-      message: "Blog deleted successfully.",
+      message: "Blog has been unlisted successfully.",
+    });
+  }
+);
+
+// Admin: Get all blogs (regardless of status)
+export const getAllBlogsAdmin = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const blogs = await Blog.find()
+      .sort({ createdAt: -1 })
+      .populate("authorId", "name email");
+
+    res.status(200).json({
+      success: true,
+      blogs,
+      message: "All blogs fetched successfully (admin).",
+    });
+  }
+);
+
+// Admin: Soft delete a blog
+export const adminSoftDeleteBlog = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const blog = await Blog.findById(req.params.id);
+
+    if (!blog) {
+      return next(new ErrorHandler("Blog post not found.", 404));
+    }
+
+    blog.isListed = false;
+    await blog.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Blog has been unlisted by admin.",
     });
   }
 );
