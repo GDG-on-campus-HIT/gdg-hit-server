@@ -4,32 +4,30 @@ import ErrorHandler from "../utlis/ErrorHandler";
 import { membersModel } from "../models/members.model";
 import cloudinary from "cloudinary";
 
-
 export const getMembers = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const members = await membersModel.find();
 
-
-      
       // Custom sorting order for designations
       const designationOrder = [
-        "President",
-        "Vice-President",
+        "Organizer",
+        "PR and Mangement Lead",
         "Web Development Lead",
-        "Treasurer",
-        "Technical Head",
-        "Event Head",
-        "Media Head",
+        "App Development Lead",
+        "Machine Learning Lead",
+        "Content Writer Lead",
+        "Video Editor Lead",
+        "Graphic Designer Lead",
         "Technical Member",
         "Web Developer",
         "App Developer",
         "Machine Learning",
         "PR",
-        "Photographer",
+        "Video Editor",
         "Graphic Designer",
         "Content Writer",
-        "Video Editor",
+        "Photographer",
       ];
 
       // Sorting function
@@ -39,29 +37,55 @@ export const getMembers = CatchAsyncError(
         if (batchComparison !== 0) return batchComparison;
 
         // Sort by designation within the same batch
-        return designationOrder.indexOf(a.designation) - designationOrder.indexOf(b.designation);
+        return (
+          designationOrder.indexOf(a.designation) -
+          designationOrder.indexOf(b.designation)
+        );
       });
 
       // Categorize members into Core Team, Media Team, PR Team, and Tech Team
       const categorizedMembers = {
-        coreTeam: members.filter(member =>
-          ["President", "Vice-President", "Web Development Lead", "Treasurer", "Technical Head", "Event Head"].includes(member.designation)
+        coreTeam: members.filter((member) =>
+          [
+            "Organizer",
+            "PR and Mangement Lead",
+            "Web Development Lead",
+            "App Development Lead",
+            "Machine Learning Lead",
+            "Content Writer Lead",
+            "Video Editor Lead",
+            "Graphic Designer Lead",
+          ].includes(member.designation)
         ),
-        mediaTeam: {
-          mediaHead: members.filter(member => member.designation === "Media Head"),
-          photographer: members.filter(member => member.designation === "Photographer"),
-          graphicDesigner: members.filter(member => member.designation === "Graphic Designer"),
-          contentWriter: members.filter(member => member.designation === "Content Writer"),
-          videoEditor: members.filter(member => member.designation === "Video Editor"),
-        },
-        prTeam: members.filter(member => member.designation === "PR"),
         techTeam: {
-          webDeveloper: members.filter(member => member.designation === "Web Developer"),
-          appDeveloper: members.filter(member => member.designation === "App Developer"),
-          machineLearning: members.filter(member => member.designation === "Machine Learning"),
-          techMember: members.filter(member => member.designation === "Technical Member"),
+          webDeveloper: members.filter((member) =>
+            ["Web Development Lead", "Web Developer"].includes(member.designation)
+          ),
+          appDeveloper: members.filter((member) =>
+            ["App Development Lead", "App Developer"].includes(member.designation)
+          ),
+          machineLearning: members.filter((member) =>
+            ["Machine Learning Lead", "Machine Learning"].includes(member.designation)
+          ),
+          techMember: members.filter((member) => member.designation === "Technical Member"),
         },
+        mediaTeam: {
+          videoEditor: members.filter((member) =>
+            ["Video Editor Lead", "Video Editor"].includes(member.designation)
+          ),
+          graphicDesigner: members.filter((member) =>
+            ["Graphic Designer Lead", "Graphic Designer"].includes(member.designation)
+          ),
+          contentWriter: members.filter((member) =>
+            ["Content Writer Lead", "Content Writer"].includes(member.designation)
+          ),
+          photographer: members.filter((member) => member.designation === "Photographer"),
+        },
+        prTeam: members.filter((member) =>
+          ["PR and Mangement Lead", "PR"].includes(member.designation)
+        ),
       };
+      
 
       res.status(200).json({
         success: true,
@@ -87,7 +111,7 @@ interface IMembers {
 
 export const addMember = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log(req.user?._id)
+    // console.log(req.user?._id);
     try {
       const {
         name,
@@ -151,9 +175,7 @@ export const addMember = CatchAsyncError(
     }
   }
 );
-  
 
-  
 export const updateMember = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -222,7 +244,6 @@ export const updateMember = CatchAsyncError(
   }
 );
 
-
 export const deleteMember = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -252,4 +273,3 @@ export const deleteMember = CatchAsyncError(
     }
   }
 );
-  

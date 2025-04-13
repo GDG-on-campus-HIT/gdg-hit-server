@@ -7,6 +7,10 @@ import {
   deleteApplication,
   getApplication,
   checkUserRegistration,
+  getAllRecruitmentData,
+  searchRecruitmentData,
+  updateRecruitmentData,
+  getAllUsersWithApplications,
 } from "../controllers/recruitment.controller";
 
 const recruitmentRouter = express.Router();
@@ -20,7 +24,7 @@ recruitmentRouter.get(
 
 recruitmentRouter.get("/applications/:id", isAuthenticate, getApplication);
 
-recruitmentRouter.post("/submit", isAuthenticate, submitApplication);
+recruitmentRouter.post("/recruitmentFormSubmission", isAuthenticate, submitApplication);
 
 recruitmentRouter.put(
   "/applications/:id",
@@ -34,6 +38,39 @@ recruitmentRouter.delete(
   authorizeRoles("admin"),
   deleteApplication
 );
-recruitmentRouter.get("/isAlreadyRegistered", checkUserRegistration);
+recruitmentRouter.get("/isAlreadyRegistered", isAuthenticate, checkUserRegistration);
+
+
+
+// admin only ---------------->
+recruitmentRouter.get(
+  "/getAllRecruitmentData",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  getAllRecruitmentData
+);
+
+recruitmentRouter.get(
+  "/searchRecruitmentData",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  searchRecruitmentData
+);
+
+recruitmentRouter.patch(
+  "/updateRecruitmentData/:id",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  updateRecruitmentData
+);
+
+
+recruitmentRouter.get(
+  "/getAllUsersWithApplications",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  getAllUsersWithApplications
+);
+
 
 export default recruitmentRouter;

@@ -21,29 +21,24 @@ const refreshTokenExpire = parseInt(
     process.env.REFRESH_TOKEN_EXPIRE || "1200",10
 );
 
-export const accessTokenOptions : ITokenOptions = {
-    expires:new Date(Date.now() + accessTokenExpire *60 *60 * 1000),
-    maxAge:accessTokenExpire *60 *60 * 1000,
-    httpOnly:false,
-    sameSite:"none",
-    hostOnly:false,
-    secure:true,
-    
-    // only for production
-    // domain:'dsch.site'
-
+export const accessTokenOptions: ITokenOptions = {
+    expires: new Date(Date.now() + accessTokenExpire * 60 * 60 * 1000),
+    maxAge: accessTokenExpire * 60 * 60 * 1000,
+    httpOnly: false,
+    sameSite: "none",
+    hostOnly: false,
+    secure: true,
+    ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
 };
 
-export const refreshTokenOptions : ITokenOptions = {
-    expires:new Date(Date.now() + refreshTokenExpire *24 * 60 * 60* 1000),
-    maxAge:refreshTokenExpire *24 * 60 * 60* 1000,
-    httpOnly:false,
-    sameSite:"none",
-    hostOnly:false,
-    secure:true,
-    
-    // only for production
-    // domain:'dsch.site'
+export const refreshTokenOptions: ITokenOptions = {
+    expires: new Date(Date.now() + refreshTokenExpire * 24 * 60 * 60 * 1000),
+    maxAge: refreshTokenExpire * 24 * 60 * 60 * 1000,
+    httpOnly: false,
+    sameSite: "none",
+    hostOnly: false,
+    secure: true,
+    ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
 };
 
 export const sendToken = (user: IUser, statusCode: number, res:Response) =>{
