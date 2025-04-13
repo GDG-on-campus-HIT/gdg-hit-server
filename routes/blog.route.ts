@@ -12,7 +12,7 @@
   const blogRouter = express.Router();
 
   // Public Routes
-  blogRouter.get("/allBlogs", getAllBlogs); // Everyone can read blogs
+  blogRouter.get("/allBlogs", getAllBlogs); 
   blogRouter.get("/slug/:slug", getBlogBySlug);
   blogRouter.get("/blog/:id", getBlogById);
 

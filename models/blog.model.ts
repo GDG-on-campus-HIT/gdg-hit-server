@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IBlog extends Document {
+  category: string;
   title: string;
   slug: string;
   description: string;
@@ -16,48 +17,52 @@ export interface IBlog extends Document {
 
 const blogSchema: Schema<IBlog> = new Schema<IBlog>(
   {
+    category: {
+      type: String,
+      required: true,
+    },
     title: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
     slug: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     description: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
     content: {
       type: String,
-      required: true
+      required: true,
     },
     imageUrl: {
       type: String,
-      required: true
+      required: true,
     },
     authorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
     tags: {
       type: [String],
-      default: []
+      default: [],
     },
     isPublished: {
       type: Boolean,
-      default: false
+      default: false,
     },
-    publishedAt: {  
-      type: Date
-    }
+    publishedAt: {
+      type: Date,
+    },
   },
   {
-    timestamps: true 
+    timestamps: true,
   }
 );
 
