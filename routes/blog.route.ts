@@ -19,8 +19,8 @@
   // Admin & Member Only Routes
   blogRouter.post(
     "/createBlog",
-    // isAuthenticate,
-    // authorizeRoles("admin", "member"),
+    isAuthenticate,
+    authorizeRoles("admin", "member"),
     addBlog
   );
 
