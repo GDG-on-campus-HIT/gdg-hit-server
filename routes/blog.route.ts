@@ -14,7 +14,7 @@
   // Public Routes
   blogRouter.get("/allBlogs", getAllBlogs); // Everyone can read blogs
   blogRouter.get("/slug/:slug", getBlogBySlug);
-  blogRouter.get("/:id", getBlogById);
+  blogRouter.get("/blog/:id", getBlogById);
 
   // Admin & Member Only Routes
   blogRouter.post(
@@ -25,14 +25,14 @@
   );
 
   blogRouter.put(
-    "/update/:id",
+    "/updateBlog/:id",
     isAuthenticate,
     authorizeRoles("admin", "member"),
     updateBlog
   );
 
   blogRouter.delete(
-    "/delete/:id",
+    "/deleteBlog/:id",
     isAuthenticate,
     authorizeRoles("admin", "member"),
     deleteBlog
