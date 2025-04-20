@@ -20,7 +20,7 @@ import mailRoute from "./routes/mail.route";
 import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
 import blogRouter from "./routes/blog.route";
-
+  
 app.use(express.json({ limit: "50mb" }));
 
 app.use((req, res, next) => {
