@@ -44,6 +44,9 @@ jobs:
           SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}"
           GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
           GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+          IMAGEKIT_PUBLIC_KEY="${{ secrets.IMAGEKIT_PUBLIC_KEY }}"
+          IMAGEKIT_PRIVATE_KEY="${{ secrets.IMAGEKIT_PRIVATE_KEY }}"
+          IMAGEKIT_URL_ENDPOINT="${{ secrets.IMAGEKIT_URL_ENDPOINT }}"
           EOF
           docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/gdg-server .
         env:
@@ -61,4 +64,4 @@ jobs:
             --region asia-southeast1 \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "ORIGIN=${{ secrets.ORIGIN }},FRONTEND_HOST=${{ secrets.FRONTEND_HOST }},NODE_ENV=${{ secrets.NODE_ENV }},DB_URL=${{ secrets.DB_URL }},CLOUD_NAME=${{ secrets.CLOUD_NAME }},CLOUD_API_KEY=${{ secrets.CLOUD_API_KEY }},CLOUD_SECRET_KEY=${{ secrets.CLOUD_SECRET_KEY }},REDIS_URL=${{ secrets.REDIS_URL }},ACTIVATION_SECRET=${{ secrets.ACTIVATION_SECRET }},ACCESS_TOKEN=${{ secrets.ACCESS_TOKEN }},REFRESH_TOKEN=${{ secrets.REFRESH_TOKEN }},ACCESS_TOKEN_EXPIRE=${{ secrets.ACCESS_TOKEN_EXPIRE }},REFRESH_TOKEN_EXPIRE=${{ secrets.REFRESH_TOKEN_EXPIRE }},SMTP_HOST=${{ secrets.SMTP_HOST }},SMTP_PORT=${{ secrets.SMTP_PORT }},SMTP_SERVICE=${{ secrets.SMTP_SERVICE }},SMTP_MAIL=${{ secrets.SMTP_MAIL }},SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            --set-env-vars "ORIGIN=${{ secrets.ORIGIN }},FRONTEND_HOST=${{ secrets.FRONTEND_HOST }},NODE_ENV=${{ secrets.NODE_ENV }},DB_URL=${{ secrets.DB_URL }},CLOUD_NAME=${{ secrets.CLOUD_NAME }},CLOUD_API_KEY=${{ secrets.CLOUD_API_KEY }},CLOUD_SECRET_KEY=${{ secrets.CLOUD_SECRET_KEY }},REDIS_URL=${{ secrets.REDIS_URL }},ACTIVATION_SECRET=${{ secrets.ACTIVATION_SECRET }},ACCESS_TOKEN=${{ secrets.ACCESS_TOKEN }},REFRESH_TOKEN=${{ secrets.REFRESH_TOKEN }},ACCESS_TOKEN_EXPIRE=${{ secrets.ACCESS_TOKEN_EXPIRE }},REFRESH_TOKEN_EXPIRE=${{ secrets.REFRESH_TOKEN_EXPIRE }},SMTP_HOST=${{ secrets.SMTP_HOST }},SMTP_PORT=${{ secrets.SMTP_PORT }},SMTP_SERVICE=${{ secrets.SMTP_SERVICE }},SMTP_MAIL=${{ secrets.SMTP_MAIL }},SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},IMAGEKIT_PUBLIC_KEY=${{ secrets.IMAGEKIT_PUBLIC_KEY }},IMAGEKIT_PRIVATE_KEY=${{ secrets.IMAGEKIT_PRIVATE_KEY }},IMAGEKIT_URL_ENDPOINT=${{ secrets.IMAGEKIT_URL_ENDPOINT }}"
