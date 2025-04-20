@@ -22,8 +22,8 @@ blogRouter.get("/blog/:id", getBlogById);
 // ✅ Member/Admin Routes
 blogRouter.post(
   "/createBlog",
-  // isAuthenticate,
-  // authorizeRoles("admin", "member"),
+  isAuthenticate,
+  authorizeRoles("admin", "member"),
   upload.single("image"),
   addBlog
 );
