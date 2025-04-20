@@ -1,10 +1,12 @@
+// src/controllers/blog.controller.ts
 import { Request, Response, NextFunction } from "express";
-import { CatchAsyncError } from "../middleware/CatchAsyncError";
-import ErrorHandler from "../utlis/ErrorHandler";
 import Blog from "../models/blog.model";
 import slugify from "slugify";
+import { CatchAsyncError } from "../middleware/CatchAsyncError";
+import ErrorHandler from "../utlis/ErrorHandler";
+import imagekit from "../utlis/imageKit";
+import fs from "fs";
 
-// Add a new blog post
 export const addBlog = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const {
@@ -12,24 +14,31 @@ export const addBlog = CatchAsyncError(
       title,
       description,
       content,
-      imageUrl,
       tags,
       isPublished,
       authorId,
     } = req.body;
 
-    if (!title || !description || !content || !imageUrl || !authorId) {
+    if (!title || !description || !content || !authorId || !req.file) {
       return next(new ErrorHandler("All required fields must be filled.", 400));
     }
 
     const slug = slugify(title, { lower: true, strict: true });
-
-    const existingSlug = await Blog.findOne({ slug });
-    if (existingSlug) {
+    const existing = await Blog.findOne({ slug });
+    if (existing) {
       return next(
-        new ErrorHandler("A blog with a similar title already exists.", 409)
+        new ErrorHandler("Blog with this title already exists.", 409)
       );
     }
+
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const uploaded = await imagekit.upload({
+      file: fileBuffer,
+      fileName: req.file.originalname,
+      folder: "blogs",
+    });
+
+    fs.unlinkSync(req.file.path);
 
     const newBlog = await Blog.create({
       category,
@@ -37,18 +46,14 @@ export const addBlog = CatchAsyncError(
       slug,
       description,
       content,
-      imageUrl,
-      tags: tags?.map((tag: string) => tag.trim().toLowerCase()) || [],
+      imageUrl: uploaded.url,
+      tags,
       isPublished,
       authorId,
       publishedAt: isPublished ? new Date() : null,
     });
 
-    res.status(201).json({
-      success: true,
-      blog: newBlog,
-      message: "Blog created successfully.",
-    });
+    res.status(201).json({ success: true, blog: newBlog });
   }
 );
 

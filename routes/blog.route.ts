@@ -10,6 +10,7 @@ import {
   adminSoftDeleteBlog,
 } from "../controllers/blog.controller";
 import { isAuthenticate, authorizeRoles } from "../middleware/auth";
+import upload from "../middleware/upload"; // 👈 Import multer upload middleware
 
 const blogRouter = express.Router();
 
@@ -21,8 +22,9 @@ blogRouter.get("/blog/:id", getBlogById);
 // ✅ Member/Admin Routes
 blogRouter.post(
   "/createBlog",
-  isAuthenticate,
-  authorizeRoles("admin", "member"),
+  // isAuthenticate,
+  // authorizeRoles("admin", "member"),
+  upload.single("image"),
   addBlog
 );
 
@@ -30,6 +32,7 @@ blogRouter.put(
   "/updateBlog/:id",
   isAuthenticate,
   authorizeRoles("admin", "member"),
+  upload.single("image"),
   updateBlog
 );
 
@@ -40,9 +43,6 @@ blogRouter.patch(
   authorizeRoles("admin", "member"),
   softDeleteBlog
 );
-
-// ❌ REMOVED: Permanent delete route
-// blogRouter.delete("/deleteBlog/:id", isAuthenticate, authorizeRoles("admin", "member"), deleteBlog);
 
 // ✅ Admin-only routes
 blogRouter.get(
