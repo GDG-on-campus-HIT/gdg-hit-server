@@ -37,10 +37,11 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: [
-      "http://localhost:3000",
-      "https://gdg-on-campus-hit.vercel.app",
+      // "http://localhost:3000",
+      // "https://gdg-on-campus-hit.vercel.app",
       "https://gdghit.site",
       "https://admin.gdghit.site",
+      "https://blog.gdghit.site",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -105,6 +106,7 @@ app.get(
 
     // Ensure redirect URL points to frontend (localhost:3000)
     redirectUrl = `https://gdghit.site${decodeURIComponent(redirectUrl)}`;
+    // redirectUrl = `http://localhost:3000${decodeURIComponent(redirectUrl)}`;
 
     res.clearCookie("redirect_url");
     res.send(
