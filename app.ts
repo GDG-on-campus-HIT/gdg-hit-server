@@ -24,7 +24,7 @@ import blogRouter from "./routes/blog.route";
 import swaggerUi from 'swagger-ui-express';
 import eventRegistration from "./routes/eventregistration.route";
 import quizRoute from "./routes/quiz.route";
-const swaggerDocument = require('./swagger-output.json');
+// const swaggerDocument = require('./swagger-output.json');
 
 
 app.use(express.json({ limit: "50mb" }));
@@ -63,11 +63,11 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+// app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.get('/docs-json', (req, res) => {
-    res.json(swaggerDocument);
-});
+// app.get('/docs-json', (req, res) => {
+//     res.json(swaggerDocument);
+// });
 
 
 app.use("/api/v1", userRouter);
