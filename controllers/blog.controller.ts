@@ -6,6 +6,7 @@ import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import imagekit from "../utlis/imageKit";
 import fs from "fs";
+import { Types } from "mongoose";
 
 export const addBlog = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -49,7 +50,7 @@ export const addBlog = CatchAsyncError(
       imageUrl: uploaded.url,
       tags,
       isPublished,
-      authorId,
+      authorId: authorId,
       publishedAt: isPublished ? new Date() : null,
     });
 
