@@ -6,7 +6,7 @@ const quizRoute = express.Router();
 
 
 // Generate a quiz with user-submitted proficiency levels
-quizRoute.post('/quiz/:participantId',isAuthenticate, generateQuiz);
+quizRoute.post('/quiz/:eventId',isAuthenticate, generateQuiz);
 
 // check if a quiz is completed
 quizRoute.get('/events/:eventId/users/:userId/quiz-status',isAuthenticate,checkUserQuizStatus)

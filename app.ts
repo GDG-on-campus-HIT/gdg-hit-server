@@ -88,17 +88,17 @@ app.use("/api/v1", quizRoute)
 //google auth route
 app.get(
   "/auth/google",
-  (req, res, next) => {
-    const redirectTo = req.query.redirectTo || "/";
-    res.cookie("redirectTo", redirectTo, {
-      httpOnly: false,
-      secure: true,
-      sameSite: "none",
-      maxAge: 10 * 60 * 1000,
-      ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
-    });
-    next();
-  },
+  // (req, res, next) => {
+  //   const redirectTo = req.query.redirectTo || "/";
+  //   res.cookie("redirectTo", redirectTo, {
+  //     httpOnly: false,
+  //     secure: true,
+  //     sameSite: "none",
+  //     maxAge: 10 * 60 * 1000,
+  //     ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
+  //   });
+  //   next();
+  // },
   passport.authenticate("google", {
     session: false,
     scope: ["profile", "email"],
@@ -117,16 +117,20 @@ app.get(
     res.cookie("access_token", accessToken, accessTokenOptions);
     res.cookie("refresh_token", refreshToken, accessTokenOptions);
 
-    let redirectUrl = req.cookies.redirect_url || "/";
+    let redirectUrl = req.cookies.redirectTo || "/";
 
     // Ensure redirect URL points to frontend (localhost:3000)
-    // redirectUrl = `https://gdghit.site${decodeURIComponent(redirectUrl)}`;
-    redirectUrl = `${process.env.FRONTEND_HOST}${decodeURIComponent(redirectUrl)}`;
+    if (!redirectUrl.startsWith("http")) {
+     
+      redirectUrl = `https://gdghit.site${decodeURIComponent(redirectUrl)}`;
+  
+    }
+    // redirectUrl = `${process.env.FRONTEND_HOST}${decodeURIComponent(redirectUrl)}`;
 
-    res.clearCookie("redirect_url");
+    res.clearCookie("redirectTo");
     res.send(
       `<script>
-      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, '*');
+      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, 'https://gdghit.site');
       window.close();
     </script>`
     );

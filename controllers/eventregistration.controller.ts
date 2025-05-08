@@ -1,7 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
-import { eventModel } from "../models/events.model";
+import { eventModel, eventRegistrationModel } from "../models/events.model";
 import { Participant, PriorKnowledge } from "../models/eventregistration.model";
+import { CatchAsyncError } from "../middleware/CatchAsyncError";
+import ErrorHandler from "../utlis/ErrorHandler";
+import userModel from "../models/user.model";
 
 interface SkillKnowledgeInput {
     skill: string;
@@ -99,13 +102,14 @@ export const addPriorKnowledge = async (req: Request, res: Response) => {
 
 
   export const registerParticipant = async (req: Request, res: Response) => {
-    const { userId, eventId, name, classRollNo, department, phoneNumber, email } = req.body;
+    const {  eventId, name, classRollNo, department, phoneNumber, email } = req.body;
   
     // Validate required fields
-    if (!userId || !eventId || !name || !classRollNo || !department || !phoneNumber || !email) {
+    if ( !eventId || !name || !classRollNo || !department || !phoneNumber || !email) {
       return res.status(400).json({ error: 'All fields are required' });
     }
   
+    const userId = (req.user as { _id: string })._id || "";
     try {
       // Validate ObjectIds
       if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(eventId)) {
@@ -146,3 +150,50 @@ export const addPriorKnowledge = async (req: Request, res: Response) => {
     }
   };
 
+
+  export const checkIfRegistered = CatchAsyncError(
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { event } = req.params;
+  
+        // Ensure event ID is provided
+        if (!event) {
+          return next(new ErrorHandler("Event ID is required.", 400));
+        }
+
+        const userId = (req.user as { _id: string })._id || "";
+        const user = await userModel.findById(userId);
+  
+        if (!user) {
+          return next(new ErrorHandler("User not found.", 404));
+        }
+  
+        const eventCheck = await eventModel.findById(event);
+        if (!eventCheck) {
+          return next(new ErrorHandler("Event not found.", 404));
+        }
+  
+        // Check if the user is already registered for the event
+        const existingRegistration = await Participant.findOne({
+          event,
+          user: user._id,
+        });
+  
+        if (existingRegistration) {
+          return res.status(200).json({
+            success: true,
+            message: "User is already registered for this event.",
+          });
+        }
+  
+        return res.status(200).json({
+          success: false,
+          message: "User is not registered for this event.",
+        });
+      } catch (error: any) {
+        return next(
+          new ErrorHandler("Something went wrong. Please try again.", 500)
+        );
+      }
+    }
+  );

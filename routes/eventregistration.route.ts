@@ -1,5 +1,5 @@
 import express from 'express';
-import { addPriorKnowledge, getPriorKnowledge, registerParticipant } from '../controllers/eventregistration.controller';
+import { addPriorKnowledge, checkIfRegistered, getPriorKnowledge, registerParticipant } from '../controllers/eventregistration.controller';
 import { isAuthenticate } from '../middleware/auth';
 
 const eventRegistration = express.Router();
@@ -11,6 +11,12 @@ eventRegistration.post('/register-event',isAuthenticate, registerParticipant);
 eventRegistration.get('/events/:eventId/prior-knowledge',isAuthenticate, getPriorKnowledge);
 
 eventRegistration.post('/events/:eventId/prior-knowledge',isAuthenticate, addPriorKnowledge);
+
+eventRegistration.get(
+    "/event-id-register/:event",
+    isAuthenticate,
+    checkIfRegistered
+  );
 
 
 export default eventRegistration;
