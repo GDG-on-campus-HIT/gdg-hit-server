@@ -1,5 +1,5 @@
 import express from 'express';
-import { checkUserQuizStatus, generateQuiz, getUserQuiz, submitQuiz } from '../controllers/quiz.controller';
+import { checkUserQuizStatus, generateQuiz, getQuizData, getUserQuiz, submitQuiz } from '../controllers/quiz.controller';
 import { isAuthenticate } from '../middleware/auth';
 
 const quizRoute = express.Router();
@@ -15,6 +15,7 @@ quizRoute.get('/events/:eventId/users/:userId/quiz-status',isAuthenticate,checkU
 //  get user quiz
 quizRoute.get('/events/:eventId/users/:userId/quiz',isAuthenticate, getUserQuiz);
 
+quizRoute.get('/quiz/sheet/:eventId', getQuizData);
 
 // Submit quiz answers and get feedback/prerequisites
 quizRoute.post('/quiz/:quizId/submit',isAuthenticate, submitQuiz);

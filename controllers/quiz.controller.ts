@@ -5,6 +5,7 @@ import { eventModel } from "../models/events.model";
 import { Participant, PriorKnowledge } from "../models/eventregistration.model";
 import { Quiz } from "../models/quiz.model";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import ErrorHandler from "../utlis/ErrorHandler";
 
 // Interfaces for type safety
 interface ProficiencyInput {
@@ -577,3 +578,23 @@ export const checkUserQuizStatus = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to check quiz status" });
   }
 };
+
+
+
+export const getQuizData = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const eventId = req.params.eventId;
+      const data = await Quiz
+        .find({ event: eventId }).populate("participant");
+
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
