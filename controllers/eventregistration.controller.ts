@@ -150,6 +150,22 @@ export const addPriorKnowledge = async (req: Request, res: Response) => {
     }
   };
 
+  export const getParticipant = CatchAsyncError(
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const eventId = req.params.eventId;
+        const participants = await Participant
+          .find({ event: eventId })
+  
+        res.status(200).json({
+          success: true,
+          participants,
+        });
+      } catch (error: any) {
+        return next(new ErrorHandler(error.message, 400));
+      }
+    }
+  );
 
   export const checkIfRegistered = CatchAsyncError(
     async (req: Request, res: Response, next: NextFunction) => {
