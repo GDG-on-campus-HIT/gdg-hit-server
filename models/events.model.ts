@@ -110,15 +110,19 @@ interface IEventRegistration extends Document {
   user: ObjectId;
   classRollNo: string;
   department: string;
+  batch: '1st' | '2nd' | '3rd' | '4th';
+  session: string;
+  year: '1st' | '2nd' | '3rd' | '4th';
   whatsappNo: number;
+  email:string;
   paymentSS: {
     public_id: string;
     url: string;
   };
   paymentUTRNo: string;
   attendance: boolean;
-  certificate:ObjectId;
-  verificationCode:string;
+  certificate: ObjectId;
+  verificationCode: string;
 }
 
 const eventRegistrationSchema = new Schema<IEventRegistration>(
@@ -143,10 +147,43 @@ const eventRegistrationSchema = new Schema<IEventRegistration>(
     },
     department: {
       type: String,
+      enum: [
+        'Chemical Engineering',
+        'Civil Engineering',
+        'Mechanical Engineering',
+        'Electrical Engineering',
+        'Electronics & Communication Engineering',
+        'Applied Electronics & Instrumentation Engineering',
+        'Computer Science & Engineering',
+        'Information Technology',
+        'Computer Science & Engineering - Artificial Intelligence and Machine Learning',
+        'Computer Science & Engineering - Data Science',
+        'Computer Science & Engineering - Cyber Security',
+        'Biotechnology',
+        'Food Technology'
+      ],
+      required: true,
+    },
+    batch: {
+      type: String,
+      enum: ['Batch 1', 'Batch 2', 'Batch 1', 'Batch 4'],
+      required: true,
+    },
+    session: {
+      type: String,
+      required: true,
+    },
+    year: {
+      type: String,
+      enum: ['1st', '2nd', '3rd', '4th'],
       required: true,
     },
     whatsappNo: {
       type: Number,
+      required: true,
+    },
+    email: {
+      type: String,
       required: true,
     },
     paymentUTRNo: {
@@ -162,8 +199,8 @@ const eventRegistrationSchema = new Schema<IEventRegistration>(
     },
     verificationCode: {
       type: String,
-      required:true,
-      unique:true
+      required: true,
+      unique: true
     },
   },
   { timestamps: true }

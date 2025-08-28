@@ -1,13 +1,16 @@
 import express from "express";
 import { isAuthenticate, authorizeRoles } from "../middleware/auth";
-import { createEventForm, getEventFormById, updateEventForm, deleteEventForm, toggleFormStatus } from "../controllers/form.controller";
+import { createForm, getAllForms, getFormById, updateForm, deleteForm, toggleFormActive } from "../controllers/form.controller";
 
-const eventForm = express.Router();
+const eventFormRouter = express.Router();
 
-eventForm.post("/create", isAuthenticate, authorizeRoles("admin"), createEventForm);
-eventForm.get("/:id", isAuthenticate, authorizeRoles("admin"), getEventFormById);
-eventForm.put("/update/:id", isAuthenticate, authorizeRoles("admin"), updateEventForm);
-eventForm.delete("/delete/:id", isAuthenticate, authorizeRoles("admin"), deleteEventForm);
-eventForm.patch("/toggle-status/:id", isAuthenticate, authorizeRoles("admin"), toggleFormStatus);
+eventFormRouter.get("/forms/:id",isAuthenticate, authorizeRoles("admin"), getFormById);
+eventFormRouter.post("/forms/create",isAuthenticate, authorizeRoles("admin"), createForm);
+eventFormRouter.get("/forms/get-forms",isAuthenticate, authorizeRoles("admin"),  getAllForms);
+eventFormRouter.put("/forms/:id",isAuthenticate, authorizeRoles("admin"), updateForm);
+eventFormRouter.delete("/forms/delete/:id",isAuthenticate, authorizeRoles("admin"), deleteForm);
+eventFormRouter.patch("/forms/:id/toggle-status",isAuthenticate, authorizeRoles("admin"),  toggleFormActive);
 
-export default eventForm;
+export default eventFormRouter;
+
+//  

@@ -31,8 +31,8 @@ eventRouter.get("/events", getEvents);
 // Get a specific event by ID
 eventRouter.get("/events/:id", getEventById);
 
-// Create a new event
-eventRouter.post("/events", isAuthenticate, authorizeRoles("admin"), addEvent);
+// Create a new event  isAuthenticate, authorizeRoles("admin"),
+eventRouter.post("/events",  addEvent);
 
 // Update an existing event
 eventRouter.put(
