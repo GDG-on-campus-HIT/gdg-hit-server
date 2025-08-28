@@ -19,6 +19,7 @@
   "author": "Deepak",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.17",
@@ -48,12 +49,15 @@
     "passport-google-oauth20": "^2.0.0",
     "serverless-http": "^3.2.0",
     "slugify": "^1.6.6",
+    "swagger-autogen": "^2.23.7",
+    "swagger-ui-express": "^5.0.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.2"
   },
   "devDependencies": {
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
+    "@types/swagger-ui-express": "^4.1.8",
     "copyfiles": "^2.4.1",
     "netlify-cli": "^15.0.2",
     "pre-commit": "^1.2.2",

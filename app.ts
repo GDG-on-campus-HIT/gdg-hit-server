@@ -20,7 +20,14 @@ import mailRoute from "./routes/mail.route";
 import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
 import blogRouter from "./routes/blog.route";
-  
+import membersIdRouter from "./routes/membersId.route";
+
+import swaggerUi from 'swagger-ui-express';
+import eventRegistration from "./routes/eventregistration.route";
+import quizRoute from "./routes/quiz.route";
+// const swaggerDocument = require('./swagger-output.json');
+
+
 app.use(express.json({ limit: "50mb" }));
 
 app.use((req, res, next) => {
@@ -38,9 +45,10 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://gdg-on-campus-hit.vercel.app",
+      // "https://gdg-on-campus-hit.vercel.app",
       "https://gdghit.site",
       "https://admin.gdghit.site",
+      "https://blog.gdghit.site",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -56,6 +64,13 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+// app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// app.get('/docs-json', (req, res) => {
+//     res.json(swaggerDocument);
+// });
+
+
 app.use("/api/v1", userRouter);
 app.use("/api/v1", memberRouter);
 app.use("/api/v1", eventRouter);
@@ -68,21 +83,24 @@ app.use("/api/v1", mailRoute);
 app.use("/api/v1", analyticsRoute);
 app.use("/api/v1", recruitmentRouter);
 app.use("/api/v1", blogRouter);
+app.use("/api/v1", membersIdRouter);
+app.use("/api/v1",eventRegistration);
+app.use("/api/v1", quizRoute)
 
 //google auth route
 app.get(
   "/auth/google",
-  (req, res, next) => {
-    const redirectTo = req.query.redirectTo || "/";
-    res.cookie("redirectTo", redirectTo, {
-      httpOnly: false,
-      secure: true,
-      sameSite: "none",
-      maxAge: 10 * 60 * 1000,
-      ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
-    });
-    next();
-  },
+  // (req, res, next) => {
+  //   const redirectTo = req.query.redirectTo || "/";
+  //   res.cookie("redirectTo", redirectTo, {
+  //     httpOnly: false,
+  //     secure: true,
+  //     sameSite: "none",
+  //     maxAge: 10 * 60 * 1000,
+  //     ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
+  //   });
+  //   next();
+  // },
   passport.authenticate("google", {
     session: false,
     scope: ["profile", "email"],
@@ -101,15 +119,20 @@ app.get(
     res.cookie("access_token", accessToken, accessTokenOptions);
     res.cookie("refresh_token", refreshToken, accessTokenOptions);
 
-    let redirectUrl = req.cookies.redirect_url || "/";
+    let redirectUrl = req.cookies.redirectTo || "/";
 
     // Ensure redirect URL points to frontend (localhost:3000)
-    redirectUrl = `https://gdghit.site${decodeURIComponent(redirectUrl)}`;
+    if (!redirectUrl.startsWith("http")) {
+     
+      redirectUrl = `https://gdghit.site${decodeURIComponent(redirectUrl)}`;
+  
+    }
+    // redirectUrl = `${process.env.FRONTEND_HOST}${decodeURIComponent(redirectUrl)}`;
 
-    res.clearCookie("redirect_url");
+    res.clearCookie("redirectTo");
     res.send(
       `<script>
-      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, '*');
+      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, 'https://gdghit.site');
       window.close();
     </script>`
     );

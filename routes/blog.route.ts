@@ -16,13 +16,13 @@ const blogRouter = express.Router();
 
 // ✅ Public Routes
 blogRouter.get("/allBlogs", getAllBlogs);
-blogRouter.get("/slug/:slug", getBlogBySlug);
+blogRouter.get("/blogbySlug/:slug", getBlogBySlug);
 blogRouter.get("/blog/:id", getBlogById);
 
 // ✅ Member/Admin Routes
 blogRouter.post(
   "/createBlog",
-  isAuthenticate,
+  // isAuthenticate,
   authorizeRoles("admin", "member"),
   upload.single("image"),
   addBlog
