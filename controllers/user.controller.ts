@@ -76,6 +76,7 @@ export const registrationUser = CatchAsyncError(
           success: true,
           message: `Please check your email : ${user.email} to activate your account`,
           user,
+          activationCode, // Return activation code in response
         });
       } catch (error: any) {
         console.log(error);

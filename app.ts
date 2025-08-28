@@ -20,6 +20,7 @@ import mailRoute from "./routes/mail.route";
 import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
 import blogRouter from "./routes/blog.route";
+import membersIdRouter from "./routes/membersId.route";
 
 import swaggerUi from 'swagger-ui-express';
 import eventRegistration from "./routes/eventregistration.route";
@@ -82,6 +83,7 @@ app.use("/api/v1", mailRoute);
 app.use("/api/v1", analyticsRoute);
 app.use("/api/v1", recruitmentRouter);
 app.use("/api/v1", blogRouter);
+app.use("/api/v1", membersIdRouter);
 app.use("/api/v1",eventRegistration);
 app.use("/api/v1", quizRoute)
 
