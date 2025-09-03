@@ -104,6 +104,7 @@ export const addPriorKnowledge = async (req: Request, res: Response) => {
 export const registerParticipant = async (req: Request, res: Response) => {
     const { 
       eventId, 
+      name,
       classRollNo, 
       department, 
       batch, 
@@ -115,8 +116,8 @@ export const registerParticipant = async (req: Request, res: Response) => {
     } = req.body;
   
     // Validate required fields
-    if (!eventId || !classRollNo || !department || !batch || !session || !year || !whatsappNo ||!email) {
-      return res.status(400).json({ error: 'All required fields must be provided: eventId, classRollNo, department, batch, session, year, whatsappNo' });
+    if (!eventId || !name || !classRollNo || !department || !batch || !session || !year || !whatsappNo || !email) {
+      return res.status(400).json({ error: 'All required fields must be provided: eventId, name, classRollNo, department, batch, session, year, whatsappNo, email' });
     }
   
     // Validate enum values
@@ -159,7 +160,7 @@ export const registerParticipant = async (req: Request, res: Response) => {
       }
   
       // Check if user is already registered for the event
-      const existingRegistration = await eventRegistrationModel.findOne({ user: userId, event: eventId });
+      const existingRegistration = await Participant.findOne({ user: userId, event: eventId });
       if (existingRegistration) {
         return res.status(200).json({
           message: 'User already registered for this event',
@@ -173,48 +174,26 @@ export const registerParticipant = async (req: Request, res: Response) => {
         return res.status(404).json({ error: 'Event not found' });
       }
   
-      // Generate verification code
-      const verificationCode = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  
-      // Create new event registration
-      const eventRegistration = new eventRegistrationModel({
+      // Create new participant registration
+      const participant = new Participant({
         user: userId,
         event: eventId,
+        name,
         classRollNo,
         department,
-        batch,
-        session,
-        year,
-        whatsappNo,
-        email,
-        paymentUTRNo,
-        verificationCode,
-        attendance: false
+        phoneNumber: whatsappNo.toString(),
+        email
       });
   
-      await eventRegistration.save();
+      await participant.save();
       
       res.status(201).json({ 
-        registrationId: eventRegistration._id,
-        verificationCode: eventRegistration.verificationCode,
+        registrationId: participant._id,
         message: 'Successfully registered for the event'
       });
       
     } catch (error) {
       console.error('Error registering participant:', error);
-      
-      // Handle duplicate verification code error
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        (error as any).code === 11000 &&
-        'keyPattern' in error &&
-        (error as any).keyPattern?.verificationCode
-      ) {
-        return res.status(500).json({ error: 'Registration failed due to system error. Please try again.' });
-      }
-      
       res.status(500).json({ error: 'Failed to register for event' });
     }
 };

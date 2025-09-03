@@ -6,7 +6,7 @@ const eventRegistration = express.Router();
 
 // 
 // Register a participant for an event
-eventRegistration.post('/register-event',isAuthenticate, registerParticipant);
+eventRegistration.post('/register-event', registerParticipant);
 
 eventRegistration.get('/events/:eventId/prior-knowledge',isAuthenticate, getPriorKnowledge);
 
