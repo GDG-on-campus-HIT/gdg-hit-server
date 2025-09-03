@@ -1,6 +1,12 @@
 require("dotenv").config();
 import mongoose, { Document, Schema, Model, ObjectId } from "mongoose";
 
+interface IContactInfo {
+  name: string;
+  mobile: string;
+  year: string;
+}
+
 interface IEvent extends Document {
   name: string;
   description: string;
@@ -11,6 +17,10 @@ interface IEvent extends Document {
   eventDate: string;
   eventTime: string;
   eventBanner: {
+    public_id: string;
+    url: string;
+  };
+  poster: {
     public_id: string;
     url: string;
   };
@@ -26,7 +36,12 @@ interface IEvent extends Document {
   gallery: Array<{
     public_id: string;
     url: string;
-  }>; //
+  }>;
+  contactInfo: Array<{
+    name: string;
+    mobile: string;
+    year: string;
+  }>;
 }
 
 const eventSchema = new Schema<IEvent>(
@@ -36,6 +51,10 @@ const eventSchema = new Schema<IEvent>(
       required: true,
     },
     eventBanner: {
+      public_id: String,
+      url: String,
+    },
+    poster: {
       public_id: String,
       url: String,
     },
@@ -99,6 +118,13 @@ const eventSchema = new Schema<IEvent>(
       {
         public_id: { type: String },
         url: { type: String },
+      },
+    ],
+    contactInfo: [
+      {
+        name: { type: String, required: true },
+        mobile: { type: String, required: true },
+        year: { type: String, required: true },
       },
     ],
   },

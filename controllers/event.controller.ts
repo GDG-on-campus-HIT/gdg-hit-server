@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import cloudinary from "cloudinary";
+import imagekit from "../utlis/imageKit";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import {
@@ -97,31 +97,29 @@ export const addEvent = CatchAsyncError(
       let eventBanner = undefined;
       let paymentQR = undefined;
 
-      // Upload event banner to Cloudinary
+      // Upload event banner to ImageKit
       if (req.body.eventBanner) {
-        const uploadedBanner = await cloudinary.v2.uploader.upload(
-          req.body.eventBanner,
-          {
-            folder: "event_banners",
-          }
-        );
+        const uploadedBanner = await imagekit.upload({
+          file: req.body.eventBanner,
+          fileName: `event_banner_${Date.now()}`,
+          folder: "/event_banners",
+        });
         eventBanner = {
-          public_id: uploadedBanner.public_id,
-          url: uploadedBanner.secure_url,
+          public_id: uploadedBanner.fileId,
+          url: uploadedBanner.url,
         };
       }
 
-      // Upload payment QR to Cloudinary
+      // Upload payment QR to ImageKit
       if (req.body.paymentQR) {
-        const uploadedQR = await cloudinary.v2.uploader.upload(
-          req.body.paymentQR,
-          {
-            folder: "payment_qr",
-          }
-        );
+        const uploadedQR = await imagekit.upload({
+          file: req.body.paymentQR,
+          fileName: `payment_qr_${Date.now()}`,
+          folder: "/payment_qr",
+        });
         paymentQR = {
-          public_id: uploadedQR.public_id,
-          url: uploadedQR.secure_url,
+          public_id: uploadedQR.fileId,
+          url: uploadedQR.url,
         };
       }
 
@@ -180,36 +178,34 @@ export const updateEvent = CatchAsyncError(
       // Update event banner
       if (req.body.eventBanner) {
         if (event.eventBanner?.public_id) {
-          await cloudinary.v2.uploader.destroy(event.eventBanner.public_id);
+          await imagekit.deleteFile(event.eventBanner.public_id);
         }
 
-        const uploadedBanner = await cloudinary.v2.uploader.upload(
-          req.body.eventBanner,
-          {
-            folder: "event_banners",
-          }
-        );
+        const uploadedBanner = await imagekit.upload({
+          file: req.body.eventBanner,
+          fileName: `event_banner_${Date.now()}`,
+          folder: "/event_banners",
+        });
         event.eventBanner = {
-          public_id: uploadedBanner.public_id,
-          url: uploadedBanner.secure_url,
+          public_id: uploadedBanner.fileId,
+          url: uploadedBanner.url,
         };
       }
 
       // Update payment QR
       if (req.body.paymentQR) {
         if (event.paymentQR?.public_id) {
-          await cloudinary.v2.uploader.destroy(event.paymentQR.public_id);
+          await imagekit.deleteFile(event.paymentQR.public_id);
         }
 
-        const uploadedQR = await cloudinary.v2.uploader.upload(
-          req.body.paymentQR,
-          {
-            folder: "payment_qr",
-          }
-        );
+        const uploadedQR = await imagekit.upload({
+          file: req.body.paymentQR,
+          fileName: `payment_qr_${Date.now()}`,
+          folder: "/payment_qr",
+        });
         event.paymentQR = {
-          public_id: uploadedQR.public_id,
-          url: uploadedQR.secure_url,
+          public_id: uploadedQR.fileId,
+          url: uploadedQR.url,
         };
       }
 
@@ -272,15 +268,13 @@ export const deleteEvent = CatchAsyncError(
           _id: { $in: registrationIds },
         });
 
-        // Optionally delete payment screenshots from Cloudinary
+        // Optionally delete payment screenshots from ImageKit
         const registrations = await eventRegistrationModel.find({
           _id: { $in: registrationIds },
         });
         for (const registration of registrations) {
           if (registration.paymentSS?.public_id) {
-            await cloudinary.v2.uploader.destroy(
-              registration.paymentSS.public_id
-            );
+            await imagekit.deleteFile(registration.paymentSS.public_id);
           }
         }
       }
@@ -316,39 +310,29 @@ export const uploadGalleryForEvent = CatchAsyncError(
         return next(new ErrorHandler("No images provided for upload.", 400));
       }
 
-      // Clear existing gallery images from Cloudinary if necessary
+      // Clear existing gallery images from ImageKit if necessary
       if (event.gallery && event.gallery.length > 0) {
         for (const image of event.gallery) {
-          await cloudinary.v2.uploader.destroy(image.public_id);
+          await imagekit.deleteFile(image.public_id);
         }
       }
 
-      // Upload new gallery images to Cloudinary
-      const uploadedGallery = [] as any;
-      for (const imageBase64 of galleryImages) {
-        const imageBuffer = Buffer.from(imageBase64, "base64");
-
-        const uploadedImage = await cloudinary.v2.uploader.upload_stream(
-          { folder: "event_gallery" },
-          (error, result) => {
-            if (error) {
-              throw new ErrorHandler(
-                "Failed to upload image to Cloudinary.",
-                500
-              );
-            }
-            uploadedGallery.push({
-              public_id: result?.public_id,
-              url: result?.secure_url,
-            });
-          }
-        );
-
-        uploadedImage.end(imageBuffer);
+      // Upload new gallery images to ImageKit
+      const uploadedGallery = [];
+      for (let i = 0; i < galleryImages.length; i++) {
+        const imageBase64 = galleryImages[i];
+        
+        const uploadedImage = await imagekit.upload({
+          file: imageBase64,
+          fileName: `gallery_${Date.now()}_${i}`,
+          folder: "/event_gallery",
+        });
+        
+        uploadedGallery.push({
+          public_id: uploadedImage.fileId,
+          url: uploadedImage.url,
+        });
       }
-
-      // Wait for all images to be uploaded
-      await new Promise((resolve) => setTimeout(resolve, 5000));
 
       // Update the event's gallery field with the new images
       event.gallery = uploadedGallery;
@@ -381,10 +365,10 @@ export const updateGalleryForEvent = CatchAsyncError(
         return next(new ErrorHandler("Event not found.", 404));
       }
 
-      // Remove specified images from Cloudinary and filter them out from the gallery array
+      // Remove specified images from ImageKit and filter them out from the gallery array
       if (imagesToRemove && imagesToRemove.length > 0) {
         for (const imageId of imagesToRemove) {
-          await cloudinary.v2.uploader.destroy(imageId);
+          await imagekit.deleteFile(imageId);
         }
         // Update gallery in the database by removing the images
         event.gallery = event.gallery.filter(
@@ -394,30 +378,19 @@ export const updateGalleryForEvent = CatchAsyncError(
 
       // Process new gallery images
       if (galleryImages && galleryImages.length > 0) {
-        for (const imageBase64 of galleryImages) {
-          const imageBuffer = Buffer.from(imageBase64, "base64");
-          const uploadedImage = await new Promise<any>((resolve, reject) => {
-            const uploadStream = cloudinary.v2.uploader.upload_stream(
-              { folder: "event_gallery" },
-              (error, result) => {
-                if (error) {
-                  return reject(
-                    new ErrorHandler(
-                      "Failed to upload image to Cloudinary.",
-                      500
-                    )
-                  );
-                }
-                resolve(result);
-              }
-            );
-            uploadStream.end(imageBuffer);
+        for (let i = 0; i < galleryImages.length; i++) {
+          const imageBase64 = galleryImages[i];
+          
+          const uploadedImage = await imagekit.upload({
+            file: imageBase64,
+            fileName: `gallery_update_${Date.now()}_${i}`,
+            folder: "/event_gallery",
           });
 
           // Add new image to the existing gallery array
           event.gallery.push({
-            public_id: uploadedImage.public_id,
-            url: uploadedImage.secure_url,
+            public_id: uploadedImage.fileId,
+            url: uploadedImage.url,
           });
         }
       }
@@ -733,17 +706,16 @@ export const addRegistration = CatchAsyncError(
 
       // Check if registration fee is not free
       if (eventCheck.registrationFee !== "free") {
-        // Upload payment screenshot to Cloudinary
+        // Upload payment screenshot to ImageKit
         if (paymentSS) {
-          const uploadedPaymentSS = await cloudinary.v2.uploader.upload(
-            paymentSS,
-            {
-              folder: "payment_screenshots",
-            }
-          );
+          const uploadedPaymentSS = await imagekit.upload({
+            file: paymentSS,
+            fileName: `payment_ss_${Date.now()}`,
+            folder: "/payment_screenshots",
+          });
           paymentSSImage = {
-            public_id: uploadedPaymentSS.public_id,
-            url: uploadedPaymentSS.secure_url,
+            public_id: uploadedPaymentSS.fileId,
+            url: uploadedPaymentSS.url,
           };
         }
 
@@ -841,20 +813,17 @@ export const updateRegistration = CatchAsyncError(
       // Handle payment screenshot update
       if (paymentSS) {
         if (registration.paymentSS?.public_id) {
-          await cloudinary.v2.uploader.destroy(
-            registration.paymentSS.public_id
-          );
+          await imagekit.deleteFile(registration.paymentSS.public_id);
         }
 
-        const uploadedPaymentSS = await cloudinary.v2.uploader.upload(
-          paymentSS,
-          {
-            folder: "payment_screenshots",
-          }
-        );
+        const uploadedPaymentSS = await imagekit.upload({
+          file: paymentSS,
+          fileName: `payment_ss_update_${Date.now()}`,
+          folder: "/payment_screenshots",
+        });
         registration.paymentSS = {
-          public_id: uploadedPaymentSS.public_id,
-          url: uploadedPaymentSS.secure_url,
+          public_id: uploadedPaymentSS.fileId,
+          url: uploadedPaymentSS.url,
         };
       }
 
@@ -895,7 +864,7 @@ export const deleteRegistration = CatchAsyncError(
       const eventId = registration.event;
 
       if (registration.paymentSS?.public_id) {
-        await cloudinary.v2.uploader.destroy(registration.paymentSS.public_id);
+        await imagekit.deleteFile(registration.paymentSS.public_id);
       }
 
       await eventRegistrationModel.findByIdAndDelete(registrationId);
@@ -1033,6 +1002,141 @@ export const addMultipleRegistration =  CatchAsyncError(
       return next(
         new ErrorHandler("Something went wrong. Please try again.", 500)
       );
+    }
+  }
+);
+
+// Get event poster
+export const getEventPoster = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { eventId } = req.params;
+
+      const event = await eventModel.findById(eventId).select('poster');
+
+      if (!event) {
+        return next(new ErrorHandler("Event not found", 404));
+      }
+
+      res.status(200).json({
+        success: true,
+        poster: event.poster
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Upload/Update event poster by event ID
+export const uploadEventPoster = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { eventId } = req.params;
+      const { poster } = req.body;
+
+      if (!poster) {
+        return next(new ErrorHandler("Please provide event poster", 400));
+      }
+
+      const event = await eventModel.findById(eventId);
+
+      if (!event) {
+        return next(new ErrorHandler("Event not found", 404));
+      }
+
+      // Delete existing poster if exists
+      if (event.poster?.public_id) {
+        await imagekit.deleteFile(event.poster.public_id);
+      }
+
+      // Upload new poster to ImageKit
+      const uploadedPoster = await imagekit.upload({
+        file: poster,
+        fileName: `event_poster_${eventId}_${Date.now()}`,
+        folder: "/event_posters",
+      });
+
+      // Update event with new poster
+      event.poster = {
+        public_id: uploadedPoster.fileId,
+        url: uploadedPoster.url,
+      };
+
+      await event.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Event poster uploaded successfully",
+        poster: event.poster
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Get event contact information
+export const getEventContactInfo = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { eventId } = req.params;
+
+      const event = await eventModel.findById(eventId).select("contactInfo name");
+
+      if (!event) {
+        return next(new ErrorHandler("Event not found", 404));
+      }
+
+      res.status(200).json({
+        success: true,
+        eventId: event._id,
+        eventName: event.name,
+        contactInfo: event.contactInfo || [],
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Add/Update event contact information
+export const updateEventContactInfo = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { eventId } = req.params;
+      const { contactInfo } = req.body;
+
+      if (!contactInfo || !Array.isArray(contactInfo)) {
+        return next(new ErrorHandler("Please provide valid contact information array", 400));
+      }
+
+      // Validate contact info structure
+      for (const contact of contactInfo) {
+        if (!contact.name || !contact.mobile || !contact.year) {
+          return next(new ErrorHandler("Each contact must have name, mobile, and year", 400));
+        }
+      }
+
+      const event = await eventModel.findById(eventId);
+
+      if (!event) {
+        return next(new ErrorHandler("Event not found", 404));
+      }
+
+      // Update contact information
+      event.contactInfo = contactInfo;
+      await event.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Event contact information updated successfully",
+        eventId: event._id,
+        eventName: event.name,
+        contactInfo: event.contactInfo,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
     }
   }
 );

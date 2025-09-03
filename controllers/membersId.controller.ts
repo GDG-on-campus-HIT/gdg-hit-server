@@ -23,7 +23,7 @@ export const getMemberIdCard = CatchAsyncError(
         idCard,
       });
     } catch (error: any) {
-      return next(new ErrorHandler(error.message, 400));
+      return next(new ErrorHandler(error.message, 400));    
     }
   }
 );
@@ -48,11 +48,44 @@ export const getAllMemberIdCards = CatchAsyncError(
   }
 );
 
+// Auto-generate card number helper function
+const generateCardNumber = async (rollNo: string): Promise<string> => {
+  // Extract first 2 digits from roll number (e.g., "22/CSE-DS/021" -> "22")
+  const yearPrefix = rollNo.substring(0, 2);
+  
+  // Find the highest serial number for this year prefix
+  const lastCard = await membersIdCardModel
+    .findOne({ 
+      cardNumber: { $regex: `^GDG${yearPrefix}` } 
+    })
+    .sort({ cardNumber: -1 });
+
+  let serialNumber = 1;
+  if (lastCard) {
+    // Extract serial number from last card (e.g., "GDG2205" -> 5)
+    const lastSerial = parseInt(lastCard.cardNumber.substring(5));
+    serialNumber = lastSerial + 1;
+  }
+
+  return `GDG${yearPrefix}${serialNumber.toString().padStart(3, '0')}`;
+};
+
 // Create member ID card (Admin only)
 export const createMemberIdCard = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { memberId, cardNumber, expiryDate, qrCode, cardImage, additionalInfo } = req.body;
+      const { 
+        memberId, 
+        cardNumber, // Optional - if provided, use it; otherwise auto-generate
+        memberName,
+        designation,
+        rollNo,
+        phoneNumber,
+        profileImage,
+        qrCode,
+        expiryDate,
+        authoritySignature
+      } = req.body;
 
       // Check if member exists
       const member = await membersModel.findById(memberId);
@@ -66,19 +99,33 @@ export const createMemberIdCard = CatchAsyncError(
         return next(new ErrorHandler("ID card already exists for this member", 400));
       }
 
-      // Check if card number is unique
-      const existingCardNumber = await membersIdCardModel.findOne({ cardNumber });
-      if (existingCardNumber) {
-        return next(new ErrorHandler("Card number already exists", 400));
+      // Generate or validate card number
+      let finalCardNumber = cardNumber;
+      if (!cardNumber) {
+        // Auto-generate card number if not provided
+        if (!rollNo) {
+          return next(new ErrorHandler("Roll number is required for card number generation", 400));
+        }
+        finalCardNumber = await generateCardNumber(rollNo);
+      } else {
+        // Check if provided card number is unique
+        const existingCardNumber = await membersIdCardModel.findOne({ cardNumber });
+        if (existingCardNumber) {
+          return next(new ErrorHandler("Card number already exists", 400));
+        }
       }
 
       const idCard = await membersIdCardModel.create({
         memberId,
-        cardNumber,
-        expiryDate,
+        cardNumber: finalCardNumber,
+        memberName: memberName || member.name,
+        designation: designation || member.designation,
+        rollNo,
+        phoneNumber,
+        profileImage,
         qrCode,
-        cardImage,
-        additionalInfo,
+        expiryDate,
+        authoritySignature,
       });
 
       const populatedCard = await membersIdCardModel
@@ -89,6 +136,7 @@ export const createMemberIdCard = CatchAsyncError(
         success: true,
         message: "Member ID card created successfully",
         idCard: populatedCard,
+        generatedCardNumber: finalCardNumber,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
@@ -114,6 +162,12 @@ export const updateMemberIdCard = CatchAsyncError(
         }
       }
 
+      // If rollNo is being updated and no cardNumber provided, regenerate card number
+      if (updateData.rollNo && !updateData.cardNumber) {
+        const newCardNumber = await generateCardNumber(updateData.rollNo);
+        updateData.cardNumber = newCardNumber;
+      }
+
       const idCard = await membersIdCardModel
         .findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
         .populate("memberId", "name email_id department designation profile_image");
@@ -126,6 +180,7 @@ export const updateMemberIdCard = CatchAsyncError(
         success: true,
         message: "Member ID card updated successfully",
         idCard,
+        updatedCardNumber: idCard.cardNumber,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
