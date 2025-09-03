@@ -25,6 +25,7 @@ import formRouter from "./routes/form.route";
 import swaggerUi from 'swagger-ui-express';
 import eventRegistration from "./routes/eventregistration.route";
 import quizRoute from "./routes/quiz.route";
+import membersIdRouter from "./routes/membersId.route";
 // const swaggerDocument = require('./swagger-output.json');
 
 
@@ -83,6 +84,7 @@ app.use("/api/v1", mailRoute);
 app.use("/api/v1", analyticsRoute);
 app.use("/api/v1", recruitmentRouter);
 app.use("/api/v1", blogRouter);
+app.use("/api/v1", membersIdRouter);
 app.use("/api/v1",eventRegistration);
 app.use("/api/v1", quizRoute)
 app.use("/api/v1", formRouter)

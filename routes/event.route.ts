@@ -21,6 +21,10 @@ import {
   updateGalleryForEvent,
   getAllRegistrations,
   addMultipleRegistration,
+  getEventPoster,
+  uploadEventPoster,
+  getEventContactInfo,
+  updateEventContactInfo,
 } from "../controllers/event.controller";
 
 const eventRouter = express.Router();
@@ -147,5 +151,23 @@ eventRouter.delete(
 
 //
 // eventRouter.post('/addMultipleRegistration', addMultipleRegistration);
+
+// Event poster routes
+eventRouter.get("/events/:eventId/poster", getEventPoster);
+eventRouter.post(
+  "/events/:eventId/poster", 
+  isAuthenticate, 
+  authorizeRoles("admin"), 
+  uploadEventPoster
+);
+
+// Event contact info routes
+eventRouter.get("/events/:eventId/contact", getEventContactInfo);
+eventRouter.put(
+  "/events/:eventId/contact", 
+  isAuthenticate, 
+  authorizeRoles("admin"), 
+  updateEventContactInfo
+);
 
 export default eventRouter;
