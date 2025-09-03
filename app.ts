@@ -20,7 +20,11 @@ import mailRoute from "./routes/mail.route";
 import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
 import blogRouter from "./routes/blog.route";
+<<<<<<< HEAD
 import membersIdRouter from "./routes/membersId.route";
+=======
+import formRouter from "./routes/form.route";
+>>>>>>> 74a2fd8647e5661f551a9f55016d55392a6c5fec
 
 import swaggerUi from 'swagger-ui-express';
 import eventRegistration from "./routes/eventregistration.route";
@@ -86,6 +90,7 @@ app.use("/api/v1", blogRouter);
 app.use("/api/v1", membersIdRouter);
 app.use("/api/v1",eventRegistration);
 app.use("/api/v1", quizRoute)
+app.use("/api/v1", formRouter)
 
 //google auth route
 app.get(

@@ -101,15 +101,57 @@ export const addPriorKnowledge = async (req: Request, res: Response) => {
   };
 
 
-  export const registerParticipant = async (req: Request, res: Response) => {
-    const {  eventId, name, classRollNo, department, phoneNumber, email } = req.body;
+export const registerParticipant = async (req: Request, res: Response) => {
+    const { 
+      eventId, 
+      classRollNo, 
+      department, 
+      batch, 
+      session, 
+      year,
+      email, 
+      whatsappNo, 
+      paymentUTRNo 
+    } = req.body;
   
     // Validate required fields
-    if ( !eventId || !name || !classRollNo || !department || !phoneNumber || !email) {
-      return res.status(400).json({ error: 'All fields are required' });
+    if (!eventId || !classRollNo || !department || !batch || !session || !year || !whatsappNo ||!email) {
+      return res.status(400).json({ error: 'All required fields must be provided: eventId, classRollNo, department, batch, session, year, whatsappNo' });
     }
   
-    const userId = (req.user as { _id: string })._id || "";
+    // Validate enum values
+    const validBatches = ['1st', '2nd', '3rd', '4th'];
+    const validYears = ['1st', '2nd', '3rd', '4th'];
+    const validDepartments = [
+      'Chemical Engineering',
+      'Civil Engineering', 
+      'Mechanical Engineering',
+      'Electrical Engineering',
+      'Electronics & Communication Engineering',
+      'Applied Electronics & Instrumentation Engineering',
+      'Computer Science & Engineering',
+      'Information Technology',
+      'Computer Science & Engineering - Artificial Intelligence and Machine Learning',
+      'Computer Science & Engineering - Data Science',
+      'Computer Science & Engineering - Cyber Security',
+      'Biotechnology',
+      'Food Technology'
+    ];
+
+    if (!validBatches.includes(batch)) {
+      return res.status(400).json({ error: 'Invalid batch. Must be one of: 1st, 2nd, 3rd, 4th' });
+    }
+
+    if (!validYears.includes(year)) {
+      return res.status(400).json({ error: 'Invalid year. Must be one of: 1st, 2nd, 3rd, 4th' });
+    }
+
+    if (!validDepartments.includes(department)) {
+      return res.status(400).json({ error: 'Invalid department. Please select a valid department from the list' });
+    }
+  
+    const userId = (req.user as { _id: string })._id || "1";
+    
     try {
       // Validate ObjectIds
       if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(eventId)) {
@@ -117,11 +159,11 @@ export const addPriorKnowledge = async (req: Request, res: Response) => {
       }
   
       // Check if user is already registered for the event
-      const existingParticipant = await Participant.findOne({ user: userId, event: eventId });
-      if (existingParticipant) {
+      const existingRegistration = await eventRegistrationModel.findOne({ user: userId, event: eventId });
+      if (existingRegistration) {
         return res.status(200).json({
           message: 'User already registered for this event',
-          participantId: existingParticipant._id
+          registrationId: existingRegistration._id
         });
       }
   
@@ -131,24 +173,51 @@ export const addPriorKnowledge = async (req: Request, res: Response) => {
         return res.status(404).json({ error: 'Event not found' });
       }
   
-      // Create new participant
-      const participant = new Participant({
+      // Generate verification code
+      const verificationCode = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  
+      // Create new event registration
+      const eventRegistration = new eventRegistrationModel({
         user: userId,
         event: eventId,
-        name,
         classRollNo,
         department,
-        phoneNumber,
+        batch,
+        session,
+        year,
+        whatsappNo,
         email,
+        paymentUTRNo,
+        verificationCode,
+        attendance: false
       });
   
-      await participant.save();
-      res.status(201).json({ participantId: participant._id });
+      await eventRegistration.save();
+      
+      res.status(201).json({ 
+        registrationId: eventRegistration._id,
+        verificationCode: eventRegistration.verificationCode,
+        message: 'Successfully registered for the event'
+      });
+      
     } catch (error) {
       console.error('Error registering participant:', error);
-      res.status(500).json({ error: 'Failed to register participant' });
+      
+      // Handle duplicate verification code error
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as any).code === 11000 &&
+        'keyPattern' in error &&
+        (error as any).keyPattern?.verificationCode
+      ) {
+        return res.status(500).json({ error: 'Registration failed due to system error. Please try again.' });
+      }
+      
+      res.status(500).json({ error: 'Failed to register for event' });
     }
-  };
+};
 
   export const getParticipant = CatchAsyncError(
     async (req: Request, res: Response, next: NextFunction) => {

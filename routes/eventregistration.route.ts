@@ -4,7 +4,7 @@ import { isAuthenticate } from '../middleware/auth';
 
 const eventRegistration = express.Router();
 
-
+// 
 // Register a participant for an event
 eventRegistration.post('/register-event',isAuthenticate, registerParticipant);
 
