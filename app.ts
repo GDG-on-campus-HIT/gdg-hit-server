@@ -50,6 +50,7 @@ app.use(
       "https://gdghit.site",
       "https://admin.gdghit.site",
       "https://blog.gdghit.site",
+      "https://my-admin-panel-livid.vercel.app/",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
