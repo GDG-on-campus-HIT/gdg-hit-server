@@ -88,7 +88,7 @@ userSchema.methods.SignAcessToken = function () {
     { id: this._id, role: this.role },
     process.env.ACCESS_TOKEN || "",
     {
-      expiresIn: "5m",
+      expiresIn: "24h",
     }
   );
 };
@@ -109,3 +109,4 @@ userSchema.methods.comparePassword = async function (
 const userModel: Model<IUser> = mongoose.model("User", userSchema);
 
 export default userModel;
+  

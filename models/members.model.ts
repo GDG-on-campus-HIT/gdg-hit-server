@@ -14,6 +14,7 @@ interface IMembers extends Document {
   bio: string;
   github_url: string;
   linkedin_url: string;
+  isActive: boolean;
 }
 
 const membersSchema = new Schema<IMembers>(
@@ -53,6 +54,10 @@ const membersSchema = new Schema<IMembers>(
     linkedin_url: {
       type: String,
       required: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }
