@@ -89,7 +89,7 @@ eventRouter.get(
 eventRouter.get(
   "/event-registrations",
   isAuthenticate,
-  authorizeRoles("user"),
+  authorizeRoles("admin"),
   getRegistrations
 );
 

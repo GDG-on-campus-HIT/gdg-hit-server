@@ -204,9 +204,12 @@ export const registerParticipant = async (req: Request, res: Response) => {
         const eventId = req.params.eventId;
         const participants = await Participant
           .find({ event: eventId })
+
+        const totalParticipants = participants.length;
   
         res.status(200).json({
           success: true,
+          totalParticipants,
           participants,
         });
       } catch (error: any) {
