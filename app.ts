@@ -49,7 +49,6 @@ app.use(
       // "https://gdg-on-campus-hit.vercel.app",
       "https://gdghit.site",
       "https://admin.gdghit.site",
-      "https://gdg-hit-main-ffch.vercel.app/",
       "https://blog.gdghit.site",
       "https://my-admin-panel-livid.vercel.app/",
     ],
