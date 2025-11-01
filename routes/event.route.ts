@@ -25,6 +25,8 @@ import {
   uploadEventPoster,
   getEventContactInfo,
   updateEventContactInfo,
+  getEventWhatsappLink,
+  setEventWhatsappLink,
 } from "../controllers/event.controller";
 
 const eventRouter = express.Router();
@@ -35,8 +37,8 @@ eventRouter.get("/events", getEvents);
 // Get a specific event by ID
 eventRouter.get("/events/:id", getEventById);
 
-// Create a new event  isAuthenticate, authorizeRoles("admin"),
-eventRouter.post("/events",  addEvent);
+// Create a new event
+eventRouter.post("/events", isAuthenticate, authorizeRoles("admin"), addEvent);
 
 // Update an existing event
 eventRouter.put(
@@ -155,19 +157,31 @@ eventRouter.delete(
 // Event poster routes
 eventRouter.get("/events/:eventId/poster", getEventPoster);
 eventRouter.post(
-  "/events/:eventId/poster", 
-  isAuthenticate, 
-  authorizeRoles("admin"), 
+  "/events/:eventId/poster",
+  isAuthenticate,
+  authorizeRoles("admin"),
   uploadEventPoster
 );
 
 // Event contact info routes
 eventRouter.get("/events/:eventId/contact", getEventContactInfo);
 eventRouter.put(
-  "/events/:eventId/contact", 
-  isAuthenticate, 
-  authorizeRoles("admin"), 
+  "/events/:eventId/contact",
+  isAuthenticate,
+  authorizeRoles("admin"),
   updateEventContactInfo
 );
+
+// Event whatsapp link routes
+// Admin sets/updates the whatsapp group link for an event
+eventRouter.post(
+  "/events/:eventId/whatsapp",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  setEventWhatsappLink
+);
+
+// Public getter for whatsapp link  
+eventRouter.get("/events/:eventId/whatsapp", getEventWhatsappLink);
 
 export default eventRouter;
