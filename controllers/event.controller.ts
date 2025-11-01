@@ -7,6 +7,7 @@ import {
   eventRegistrationModel,
   eventFAQModel,
 } from "../models/events.model";
+import EventWhatsapp from "../models/eventWhatsapp.model";
 import userModel from "../models/user.model";
 
 // Get list of events
@@ -1135,6 +1136,52 @@ export const updateEventContactInfo = CatchAsyncError(
         eventName: event.name,
         contactInfo: event.contactInfo,
       });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Set or update whatsapp group link for an event (Admin only)
+export const setEventWhatsappLink = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { eventId } = req.params as any;
+      const { whatsappLink } = req.body;
+
+      if (!whatsappLink || typeof whatsappLink !== "string") {
+        return next(new ErrorHandler("Please provide a valid whatsapp link", 400));
+      }
+
+      const event = await eventModel.findById(eventId);
+      if (!event) return next(new ErrorHandler("Event not found", 404));
+
+      // Upsert EventWhatsapp document
+      const existing = await EventWhatsapp.findOne({ event: event._id });
+      if (existing) {
+        existing.whatsappLink = whatsappLink;
+        await existing.save();
+        return res.status(200).json({ success: true, message: "Whatsapp link updated", whatsappLink: existing.whatsappLink });
+      }
+
+      const created = await EventWhatsapp.create({ event: event._id, whatsappLink });
+      res.status(201).json({ success: true, message: "Whatsapp link saved", whatsappLink: created.whatsappLink });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Get whatsapp group link for an event (public)
+export const getEventWhatsappLink = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { eventId } = req.params as any;
+      const event = await eventModel.findById(eventId).select("name");
+      if (!event) return next(new ErrorHandler("Event not found", 404));
+
+      const linkDoc = await EventWhatsapp.findOne({ event: event._id });
+      res.status(200).json({ success: true, eventId: event._id, eventName: event.name, whatsappLink: linkDoc ? linkDoc.whatsappLink : null });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }

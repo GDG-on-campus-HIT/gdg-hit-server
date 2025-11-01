@@ -29,6 +29,7 @@ interface IEvent extends Document {
     public_id: string;
     url: string;
   };
+  // whatsappLink is stored in a separate model (EventWhatsapp)
   faq: Array<{ faq_id: ObjectId }>;
   is_upcoming: boolean;
   registrations: Array<{ registration_id: ObjectId }>;
