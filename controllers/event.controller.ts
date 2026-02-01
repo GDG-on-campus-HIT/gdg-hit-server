@@ -75,6 +75,7 @@ export const addEvent = CatchAsyncError(
         eventTime,
         upiID,
         is_upcoming,
+        whatsappLink,
       } = req.body;
 
       const requiredFields = {
@@ -138,6 +139,7 @@ export const addEvent = CatchAsyncError(
         paymentQR,
         upiID,
         is_upcoming,
+        whatsappLink,
       });
 
       res.status(201).json({
@@ -169,6 +171,7 @@ export const updateEvent = CatchAsyncError(
         upiID,
         is_upcoming,
         registration_open,
+        whatsappLink,
       } = req.body;
 
       const event = await eventModel.findById(eventId);
@@ -223,6 +226,7 @@ export const updateEvent = CatchAsyncError(
       if (typeof is_upcoming !== "undefined") event.is_upcoming = is_upcoming;
       if (typeof registration_open !== "undefined")
         event.registration_open = registration_open;
+      if (whatsappLink) event.whatsappLink = whatsappLink;
 
       await event.save();
 
@@ -322,13 +326,13 @@ export const uploadGalleryForEvent = CatchAsyncError(
       const uploadedGallery = [];
       for (let i = 0; i < galleryImages.length; i++) {
         const imageBase64 = galleryImages[i];
-        
+
         const uploadedImage = await imagekit.upload({
           file: imageBase64,
           fileName: `gallery_${Date.now()}_${i}`,
           folder: "/event_gallery",
         });
-        
+
         uploadedGallery.push({
           public_id: uploadedImage.fileId,
           url: uploadedImage.url,
@@ -381,7 +385,7 @@ export const updateGalleryForEvent = CatchAsyncError(
       if (galleryImages && galleryImages.length > 0) {
         for (let i = 0; i < galleryImages.length; i++) {
           const imageBase64 = galleryImages[i];
-          
+
           const uploadedImage = await imagekit.upload({
             file: imageBase64,
             fileName: `gallery_update_${Date.now()}_${i}`,
@@ -761,9 +765,9 @@ export const addRegistration = CatchAsyncError(
       const newRegistration = await eventRegistrationModel.create({
         event,
         user: user._id,
-        classRollNo:rollNo,
+        classRollNo: rollNo,
         department,
-        whatsappNo:whatsappNumber,
+        whatsappNo: whatsappNumber,
         paymentSS: paymentSSImage,
         paymentUTRNo: utrNo,
         verificationCode, // Add verification code here
@@ -776,7 +780,7 @@ export const addRegistration = CatchAsyncError(
         { new: true }
       );
 
-      
+
 
       res.status(201).json({
         success: true,
@@ -970,31 +974,32 @@ export const checkIfRegistered = CatchAsyncError(
 );
 
 // temporary -------------------->
-export const addMultipleRegistration =  CatchAsyncError(
+export const addMultipleRegistration = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      
+
       const newRegistration = await eventRegistrationModel.insertMany([
-        { "event": "671d5f48ac2834026446bb67",
-    "user": "671d5132ca65d95a1d8ebaf4",
-    "classRollNo": "23/IT/189",
-    "department": "IT",
-    "whatsappNo": 6201560339,
-    "verificationCode": "VCTRn"
-  }
+        {
+          "event": "671d5f48ac2834026446bb67",
+          "user": "671d5132ca65d95a1d8ebaf4",
+          "classRollNo": "23/IT/189",
+          "department": "IT",
+          "whatsappNo": 6201560339,
+          "verificationCode": "VCTRn"
+        }
       ]
       );
-  
+
       // Extract all registration IDs
       const registrationIds = newRegistration.map((reg) => reg._id);
-  
+
       // Add the registration IDs to the event
       await eventModel.findByIdAndUpdate(
         "671d5f48ac2834026446bb67", // Event ID fixed
         { $push: { registrations: { $each: registrationIds } } },
         { new: true }
       );
-  
+
       res.status(201).json({
         success: true,
         new_registration: newRegistration,

@@ -8,6 +8,7 @@ import {
   updateMember,
   toggleMemberStatus,
   getAllMembersAdmin,
+  getMemberByIdAdmin,
 } from "../controllers/members.controller";
 
 const memberRouter = express.Router();
@@ -15,6 +16,22 @@ const memberRouter = express.Router();
 memberRouter.get("/members", getMembers);
 
 memberRouter.get("/members/:id", getMemberById);
+
+// Get all members including inactive (Admin only)
+memberRouter.get(
+  "/members/admin/all",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  getAllMembersAdmin
+);
+
+// Get single member for admin (includes inactive)
+memberRouter.get(
+  "/members/admin/:id",
+  isAuthenticate,
+  authorizeRoles("admin"),
+  getMemberByIdAdmin
+);
 
 memberRouter.post(
   "/members",
@@ -38,14 +55,6 @@ memberRouter.patch(
   toggleMemberStatus
 );
 
-// Get all members including inactive (Admin only)
-memberRouter.get(
-  "/members/admin/all",
-  isAuthenticate,
-  authorizeRoles("admin"),
-  getAllMembersAdmin
-);
-
 // Hard delete member (Admin only) - Use with caution
 memberRouter.delete(
   "/members/hard-delete/:id",
@@ -53,5 +62,6 @@ memberRouter.delete(
   authorizeRoles("admin"),
   deleteMember
 );
+
 
 export default memberRouter;
