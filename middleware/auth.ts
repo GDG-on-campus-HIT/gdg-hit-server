@@ -8,10 +8,14 @@ import { NextFunction, Request, Response } from "express";
 // authenticated user
 export const isAuthenticate = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const access_token = req.cookies.access_token as string;
+    let access_token = req.cookies.access_token as string;
+
+    if (!access_token && req.headers.authorization) {
+      access_token = req.headers.authorization.split(" ")[1];
+    }
 
     if (!access_token) {
-      return next(new ErrorHandler("please login to access the resourse", 400));
+      return next(new ErrorHandler("Please login to access the resource", 400));
     }
 
     const decoded = Jwt.verify(
@@ -36,15 +40,15 @@ export const isAuthenticate = CatchAsyncError(
 
 
 export const authorizeRoles = (...roles: string[]) => {
-    return (req: Request, res: Response, next: NextFunction) => {
-      if (!roles.includes(req.user?.role || "")) {
-        return next(
-          new ErrorHandler(
-            `Access denied: Your role (${req.user?.role}) is not authorized to access this resource.`,
-            403
-          )
-        );
-      }
-      next();
-    };
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!roles.includes(req.user?.role || "")) {
+      return next(
+        new ErrorHandler(
+          `Access denied: Your role (${req.user?.role}) is not authorized to access this resource.`,
+          403
+        )
+      );
+    }
+    next();
   };
+};

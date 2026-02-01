@@ -3,7 +3,7 @@ import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
 import userModel, { IUser } from "../models/user.model";
-import mongoose,{ Document } from "mongoose";
+import mongoose, { Document } from "mongoose";
 
 
 // Get all applications with filtering
@@ -35,7 +35,7 @@ export const getApplications = CatchAsyncError(
 export const submitApplication = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { generalInfo, roleSpecific, finalInfo } = req.body;
+      const { generalInfo, roleSpecific, finalInfo, formId } = req.body;
 
       console.log("Extracted fields:", {
         generalInfo,
@@ -66,10 +66,9 @@ export const submitApplication = CatchAsyncError(
       if (existingApplication) {
         return next(
           new ErrorHandler(
-            `Application already exists with this ${
-              existingApplication.generalInfo.email === generalInfo.email
-                ? "email"
-                : "roll number"
+            `Application already exists with this ${existingApplication.generalInfo.email === generalInfo.email
+              ? "email"
+              : "roll number"
             }`,
             400
           )
@@ -137,6 +136,7 @@ export const submitApplication = CatchAsyncError(
       // console.log("Creating new application...");
       const application = await RecruitmentModel.create({
         user: userId,
+        formId,
         generalInfo,
         roleSpecific: roleSpecificData,
         finalInfo,
@@ -258,10 +258,10 @@ export const checkUserRegistration = CatchAsyncError(
         isRegistered: !!existingApplication,
         application: existingApplication
           ? {
-              id: existingApplication._id,
-              status: existingApplication.status,
-              positions: existingApplication.generalInfo.positions,
-            }
+            id: existingApplication._id,
+            status: existingApplication.status,
+            positions: existingApplication.generalInfo.positions,
+          }
           : null,
       });
     } catch (error: any) {
@@ -282,11 +282,15 @@ export const getAllRecruitmentData = CatchAsyncError(
         year,
         status,
         position,
+        formId,
       } = req.query;
 
       // Build query object for filtering
       const query: any = {};
 
+      if (formId) {
+        query.formId = formId;
+      }
       if (branch) {
         query["generalInfo.branch"] = branch;
       }
@@ -319,11 +323,21 @@ export const getAllRecruitmentData = CatchAsyncError(
       const hasNextPage = pageNum < totalPages;
       const hasPrevPage = pageNum > 1;
 
+      let positionStats: any[] = [];
+      if (req.query.includeStats === 'true' && formId) {
+        positionStats = await RecruitmentModel.aggregate([
+          { $match: { formId: new mongoose.Types.ObjectId(formId as string) } },
+          { $unwind: "$generalInfo.positions" },
+          { $group: { _id: "$generalInfo.positions", count: { $sum: 1 } } }
+        ]);
+      }
+
       // Response
       res.status(200).json({
         success: true,
         data: {
           recruitmentData,
+          positionStats,
           pagination: {
             totalDocuments,
             totalPages,

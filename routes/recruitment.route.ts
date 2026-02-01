@@ -14,51 +14,52 @@ import {
 } from "../controllers/recruitment.controller";
 
 const recruitmentRouter = express.Router();
+const recruitmentBase = "/recruitment"; 
 
 recruitmentRouter.get(
-  "/applications",
+  `${recruitmentBase}/applications`,
   isAuthenticate,
   authorizeRoles("admin"),
   getApplications
 );
 
-recruitmentRouter.get("/applications/:id", isAuthenticate, getApplication);
+recruitmentRouter.get(`${recruitmentBase}/applications/:id`, isAuthenticate, getApplication);
 
-recruitmentRouter.post("/recruitmentFormSubmission", isAuthenticate, submitApplication);
+recruitmentRouter.post(`${recruitmentBase}/recruitmentFormSubmission`, isAuthenticate, submitApplication);
 
 recruitmentRouter.put(
-  "/applications/:id",
+  `${recruitmentBase}/applications/:id`,
   isAuthenticate,
   authorizeRoles("admin"),
   updateApplicationStatus
 );
 recruitmentRouter.delete(
-  "/applications/:id",
+  `${recruitmentBase}/applications/:id`,
   isAuthenticate,
   authorizeRoles("admin"),
   deleteApplication
 );
-recruitmentRouter.get("/isAlreadyRegistered", isAuthenticate, checkUserRegistration);
+recruitmentRouter.get(`${recruitmentBase}/isAlreadyRegistered`, isAuthenticate, checkUserRegistration);
 
 
 
 // admin only ---------------->
 recruitmentRouter.get(
-  "/getAllRecruitmentData",
+  `${recruitmentBase}/getAllRecruitmentData`,
   isAuthenticate,
   authorizeRoles("admin"),
   getAllRecruitmentData
 );
 
 recruitmentRouter.get(
-  "/searchRecruitmentData",
+  `${recruitmentBase}/searchRecruitmentData`,
   isAuthenticate,
   authorizeRoles("admin"),
   searchRecruitmentData
 );
 
 recruitmentRouter.patch(
-  "/updateRecruitmentData/:id",
+  `${recruitmentBase}/updateRecruitmentData/:id`,
   isAuthenticate,
   authorizeRoles("admin"),
   updateRecruitmentData
@@ -66,7 +67,7 @@ recruitmentRouter.patch(
 
 
 recruitmentRouter.get(
-  "/getAllUsersWithApplications",
+  `${recruitmentBase}/getAllUsersWithApplications`,
   isAuthenticate,
   authorizeRoles("admin"),
   getAllUsersWithApplications
