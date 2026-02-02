@@ -35,12 +35,18 @@ export const getApplications = CatchAsyncError(
 export const submitApplication = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log("📨 Received recruitment form submission");
+      console.log("Request body:", JSON.stringify(req.body, null, 2));
+      console.log("User authenticated:", !!req.user);
+      console.log("User ID:", req.user?._id);
+
       const { generalInfo, roleSpecific, finalInfo, formId } = req.body;
 
       console.log("Extracted fields:", {
         generalInfo,
         roleSpecific,
         finalInfo,
+        formId
       });
 
       if (!req.user) {

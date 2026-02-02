@@ -11,12 +11,14 @@ const seedAdmin = async () => {
         if (!dbUrl) {
             throw new Error('DB_URL is not defined in .env');
         }
+        console.log(`Debug: DB_URL found (starts with: ${dbUrl.substring(0, 15)}...)`);
 
+        console.log('Connecting to MongoDB...');
         await mongoose.connect(dbUrl);
         console.log('Connected to MongoDB');
 
-        const adminEmail = 'admin@gdg.com';
-        const adminPassword = 'adminpassword123'; // Change this as needed
+        const adminEmail = 'sanuadmin@gdg.com';
+        const adminPassword = 'sanusaha123'; // Change this as needed
 
         const existingAdmin = await userModel.findOne({ email: adminEmail });
 
