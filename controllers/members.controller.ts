@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { membersModel } from "../models/members.model";
-import cloudinary from "../utlis/cloudinary";
+import imagekit from "../utlis/imageKit";
 
 // Get single member by ID (Public route)
 export const getMemberById = CatchAsyncError(
@@ -67,7 +67,13 @@ export const getMembers = CatchAsyncError(
 
       // Custom sorting order for designations
       const designationOrder = [
+        "Founder",
         "Organizer",
+        "Treasurer",
+        "Secretary",
+        "Co-Organizer",
+        "Technical Lead",
+        "Management Head",
         "PR and Mangement Lead",
         "Web Development Lead",
         "App Development Lead",
@@ -99,11 +105,17 @@ export const getMembers = CatchAsyncError(
         );
       });
 
-      // Categorize members into Core Team, Media Team, PR Team, and Tech Team
+      // Categorize members into Founder, Core Team, Media Team, PR Team, and Tech Team
       const categorizedMembers = {
+        founder: members.filter((member) => member.designation === "Founder"),
         coreTeam: members.filter((member) =>
           [
             "Organizer",
+            "Treasurer",
+            "Secretary",
+            "Co-Organizer",
+            "Technical Lead",
+            "Management Head",
             "PR and Mangement Lead",
             "Web Development Lead",
             "App Development Lead",
@@ -200,9 +212,11 @@ export const addMember = CatchAsyncError(
         }
       }
 
-      // Upload profile image to Cloudinary
-      const myCloud = await cloudinary.uploader.upload(profile_image, {
-        folder: "members",
+      // Upload profile image to ImageKit
+      const myCloud = await imagekit.upload({
+        file: profile_image,
+        fileName: `member_${Date.now()}`,
+        folder: "/members",
       });
 
       // Create member
@@ -216,8 +230,8 @@ export const addMember = CatchAsyncError(
         github_url,
         linkedin_url,
         profile_image: {
-          public_id: myCloud.public_id,
-          url: myCloud.secure_url,
+          public_id: myCloud.fileId,
+          url: myCloud.url,
         },
         isActive: true,
       });
@@ -228,6 +242,7 @@ export const addMember = CatchAsyncError(
         new_member: newMember,
       });
     } catch (error: any) {
+      console.error("Error in addMember:", error);
       return next(new ErrorHandler(error.message, 400));
     }
   }
@@ -258,19 +273,21 @@ export const updateMember = CatchAsyncError(
       // Handle profile image update
       if (profile_image) {
         try {
-          // Delete the old image from Cloudinary
+          // Delete the old image from ImageKit
           if (member.profile_image?.public_id) {
-            await cloudinary.uploader.destroy(member.profile_image.public_id);
+            await imagekit.deleteFile(member.profile_image.public_id);
           }
 
           // Upload the new image
-          const myCloud = await cloudinary.uploader.upload(profile_image, {
-            folder: "members",
+          const myCloud = await imagekit.upload({
+            file: profile_image,
+            fileName: `member_${Date.now()}`,
+            folder: "/members",
           });
 
           member.profile_image = {
-            public_id: myCloud.public_id,
-            url: myCloud.secure_url,
+            public_id: myCloud.fileId,
+            url: myCloud.url,
           };
         } catch (imageError: any) {
           console.error("Image upload error:", imageError);
@@ -366,9 +383,9 @@ export const deleteMember = CatchAsyncError(
         return next(new ErrorHandler("Member not found.", 404));
       }
 
-      // Delete the profile image from Cloudinary
+      // Delete the profile image from ImageKit
       if (member.profile_image?.public_id) {
-        await cloudinary.uploader.destroy(member.profile_image.public_id);
+        await imagekit.deleteFile(member.profile_image.public_id);
       }
 
       // Delete the member from the database
