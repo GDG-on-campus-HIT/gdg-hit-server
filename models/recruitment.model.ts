@@ -77,20 +77,12 @@ interface IFinalInfo {
 // Main Recruitment Interface
 export interface IRecruitment extends Document {
   user: mongoose.Schema.Types.ObjectId;
+  formId?: mongoose.Schema.Types.ObjectId; // Link to the specific form definition
   // Step 1
   generalInfo: IGeneralInfo;
   // Step 3
-  roleSpecific: {
-    webDeveloper?: IWebDeveloper;
-    appDeveloper?: IAppDeveloper;
-    machineLearning?: IMachineLearing;
-    techMember?: ITechMember;
-    publicRelations?: IPublicRelations;
-    videoEditor?: IVideoEditor;
-    contentWriter?: IContentWriter;
-    graphicsDesigner?: IGraphicsDesigner;
-    photographer?: IPhotographer;
-  };
+  // Step 3
+  roleSpecific: Record<string, any>; // Flexible structure to support dynamic forms
   // Step 4
   finalInfo: IFinalInfo;
   // Additional fields
@@ -104,6 +96,10 @@ const recruitmentSchema = new Schema<IRecruitment>(
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
+    },
+    formId: {
+      type: Schema.Types.ObjectId,
+      ref: "RecruitmentForm"
     },
     // Step 1: General Information
     generalInfo: {
@@ -137,54 +133,10 @@ const recruitmentSchema = new Schema<IRecruitment>(
         required: [true, "Please select the position(s) you are applying for"],
       },
     },
-    // Step 3: Role-Specific Information
+    // Step 3: Role-Specific Information (Flexible/Dynamic)
     roleSpecific: {
-      webDeveloper: {
-        technologies: String,
-        projects: String,
-        learning: String,
-        featureSuggestion: String,
-      },
-      appDeveloper: {
-        technologies: String,
-        projects: String,
-        learning: String,
-        featureSuggestion: String,
-      },
-      machineLearning: {
-        technologies: String,
-        projects: String,
-        learning: String,
-      },
-      techMember: {
-        technologies: String,
-        learning: String,
-      },
-      publicRelations: {
-        mockPost: String,
-        experience: String,
-        preferredPlatforms: String,
-      },
-      videoEditor: {
-        tools: String,
-        videoLink: String,
-        motionGraphics: String,
-      },
-      contentWriter: {
-        hasWrittenBefore: String,
-      },
-      graphicsDesigner: {
-        designTools: String,
-        portfolioLink: String,
-        socialMediaDesign: String,
-        eventPosterConcept: String,
-      },
-      photographer: {
-        photographyType: String,
-        eventExperience: String,
-        photographyPortfolio: String,
-        cameraModel: String,
-      },
+      type: Schema.Types.Mixed,
+      default: {}
     },
 
     // Step 4: Final Information

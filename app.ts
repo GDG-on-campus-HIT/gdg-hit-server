@@ -21,6 +21,7 @@ import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
 import blogRouter from "./routes/blog.route";
 import formRouter from "./routes/form.route";
+import recruitmentFormRouter from "./routes/recruitmentForm.route";
 
 import swaggerUi from 'swagger-ui-express';
 import eventRegistration from "./routes/eventregistration.route";
@@ -46,11 +47,16 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:3002",
+      "http://localhost:5173",
+      "http://localhost:5174",
       // "https://gdg-on-campus-hit.vercel.app",
       "https://gdghit.site",
       "https://admin.gdghit.site",
+      "https://gdg-hit-main-ffch.vercel.app",
       "https://blog.gdghit.site",
-      "https://my-admin-panel-livid.vercel.app/",
+      "https://my-admin-panel-livid.vercel.app",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -86,9 +92,10 @@ app.use("/api/v1", analyticsRoute);
 app.use("/api/v1", recruitmentRouter);
 app.use("/api/v1", blogRouter);
 app.use("/api/v1", membersIdRouter);
-app.use("/api/v1",eventRegistration);
+app.use("/api/v1", eventRegistration);
 app.use("/api/v1", quizRoute)
 app.use("/api/v1", formRouter)
+app.use("/api/v1", recruitmentFormRouter)
 
 //google auth route
 app.get(
@@ -120,22 +127,23 @@ app.get(
     const { user, accessToken, refreshToken } = req.user as any;
 
     res.cookie("access_token", accessToken, accessTokenOptions);
-    res.cookie("refresh_token", refreshToken, accessTokenOptions);
+    res.cookie("refresh_token", refreshToken, refreshTokenOptions);
 
     let redirectUrl = req.cookies.redirectTo || "/";
+    const frontendHost = process.env.FRONTEND_HOST || "http://localhost:3000";
 
-    // Ensure redirect URL points to frontend (localhost:3000)
+    // Ensure redirect URL points to frontend
     if (!redirectUrl.startsWith("http")) {
-     
-      redirectUrl = `https://gdghit.site${decodeURIComponent(redirectUrl)}`;
-  
+      redirectUrl = `${frontendHost}${decodeURIComponent(redirectUrl)}`;
     }
-    // redirectUrl = `${process.env.FRONTEND_HOST}${decodeURIComponent(redirectUrl)}`;
 
     res.clearCookie("redirectTo");
+
+    const targetOrigin = process.env.NODE_ENV === "production" ? "https://gdghit.site" : frontendHost;
+
     res.send(
       `<script>
-      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, 'https://gdghit.site');
+      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, '${targetOrigin}');
       window.close();
     </script>`
     );

@@ -32,6 +32,28 @@ export const getMemberById = CatchAsyncError(
   }
 );
 
+// Get single member by ID (Admin only - includes inactive)
+export const getMemberByIdAdmin = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const memberId = req.params.id;
+
+      const member = await membersModel.findById(memberId);
+
+      if (!member) {
+        return next(new ErrorHandler("Member not found", 404));
+      }
+
+      res.status(200).json({
+        success: true,
+        member,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error?.message || "An error occurred", 400));
+    }
+  }
+);
+
 export const getMembers = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -119,7 +141,7 @@ export const getMembers = CatchAsyncError(
           ["PR and Mangement Lead", "PR"].includes(member.designation)
         ),
       };
-      
+
 
       res.status(200).json({
         success: true,
@@ -346,7 +368,7 @@ export const deleteMember = CatchAsyncError(
 
       // Delete the profile image from Cloudinary
       if (member.profile_image?.public_id) {
-  await cloudinary.uploader.destroy(member.profile_image.public_id);
+        await cloudinary.uploader.destroy(member.profile_image.public_id);
       }
 
       // Delete the member from the database

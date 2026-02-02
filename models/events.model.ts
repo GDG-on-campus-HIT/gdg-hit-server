@@ -29,7 +29,8 @@ interface IEvent extends Document {
     public_id: string;
     url: string;
   };
-  // whatsappLink is stored in a separate model (EventWhatsapp)
+  whatsappLink: string;
+  // whatsappLink is stored in a separate model (EventWhatsapp) - Legacy note, now moving to main model
   faq: Array<{ faq_id: ObjectId }>;
   is_upcoming: boolean;
   registrations: Array<{ registration_id: ObjectId }>;
@@ -64,6 +65,9 @@ const eventSchema = new Schema<IEvent>(
       url: String,
     },
     upiID: {
+      type: String,
+    },
+    whatsappLink: {
       type: String,
     },
     description: {
@@ -141,7 +145,7 @@ interface IEventRegistration extends Document {
   session: string;
   year: '1st' | '2nd' | '3rd' | '4th';
   whatsappNo: number;
-  email:string;
+  email: string;
   paymentSS: {
     public_id: string;
     url: string;
