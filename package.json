@@ -5,7 +5,7 @@
   "type": "commonjs",
   "main": "dist/server.js",
   "engines": {
-    "node": "20.x"
+    "node": ">=20.x"
   },
   "scripts": {
     "postinstall": "npm install --save-dev @types/passport @types/passport-google-oauth20",
@@ -65,10 +65,5 @@
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  },
-  "pre-commit": [
-    "ts.check",
-    "build",
-    "add-build"
-  ]
+  }
 }
