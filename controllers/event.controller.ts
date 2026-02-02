@@ -180,6 +180,7 @@ export const addEvent = CatchAsyncError(
 export const updateEvent = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log("Update Event Payload:", req.body);
       const eventId = req.params.id;
       const {
         name,
@@ -265,8 +266,9 @@ export const updateEvent = CatchAsyncError(
       if (typeof is_upcoming !== "undefined") event.is_upcoming = is_upcoming;
       if (typeof registration_open !== "undefined")
         event.registration_open = registration_open;
-      if (whatsappLink) event.whatsappLink = whatsappLink;
-      if (req.body.contactInfo) event.contactInfo = req.body.contactInfo;
+      if (typeof whatsappLink !== "undefined") event.whatsappLink = whatsappLink;
+      if (typeof req.body.contactInfo !== "undefined")
+        event.contactInfo = req.body.contactInfo;
 
       await event.save();
 
@@ -275,8 +277,9 @@ export const updateEvent = CatchAsyncError(
         updated_event: event,
       });
     } catch (error: any) {
+      console.error("Error updating event:", error);
       return next(
-        new ErrorHandler("Something went wrong. Please try again.", 500)
+        new ErrorHandler(error.message || "Something went wrong. Please try again.", 400)
       );
     }
   }
