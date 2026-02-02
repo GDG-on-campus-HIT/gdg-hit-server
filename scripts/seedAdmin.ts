@@ -17,8 +17,8 @@ const seedAdmin = async () => {
         await mongoose.connect(dbUrl);
         console.log('Connected to MongoDB');
 
-        const adminEmail = 'sanuadmin@gdg.com';
-        const adminPassword = 'sanusaha123'; // Change this as needed
+        const adminEmail = process.env.ADMIN_USERNAME;
+        const adminPassword = process.env.ADMIN_PASSWORD; // Change this as needed
 
         const existingAdmin = await userModel.findOne({ email: adminEmail });
 
