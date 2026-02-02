@@ -87,7 +87,6 @@ export const addEvent = CatchAsyncError(
         venue: "Please provide venue of the event.",
         eventDate: "Please specify the event date.",
         eventTime: "Please specify the event time.",
-        is_upcoming: "Please indicate whether the event is upcoming.",
       };
 
       for (const [key, message] of Object.entries(requiredFields)) {
@@ -96,7 +95,13 @@ export const addEvent = CatchAsyncError(
         }
       }
 
+      // Validate boolean field separately (can be false, but shouldn't be undefined/null)
+      if (typeof req.body.is_upcoming === 'undefined' || req.body.is_upcoming === null) {
+        return next(new ErrorHandler("Please indicate whether the event is upcoming.", 400));
+      }
+
       let eventBanner = undefined;
+      let poster = undefined;
       let paymentQR = undefined;
 
       // Upload event banner to ImageKit
@@ -109,6 +114,19 @@ export const addEvent = CatchAsyncError(
         eventBanner = {
           public_id: uploadedBanner.fileId,
           url: uploadedBanner.url,
+        };
+      }
+
+      // Upload poster to ImageKit
+      if (req.body.poster) {
+        const uploadedPoster = await imagekit.upload({
+          file: req.body.poster,
+          fileName: `event_poster_${Date.now()}`,
+          folder: "/event_posters",
+        });
+        poster = {
+          public_id: uploadedPoster.fileId,
+          url: uploadedPoster.url,
         };
       }
 
@@ -136,10 +154,13 @@ export const addEvent = CatchAsyncError(
         eventDate,
         eventTime,
         eventBanner,
+        poster,
         paymentQR,
         upiID,
         is_upcoming,
+        registration_open: req.body.registration_open ?? true,
         whatsappLink,
+        contactInfo: req.body.contactInfo || [],
       });
 
       res.status(201).json({
@@ -147,8 +168,9 @@ export const addEvent = CatchAsyncError(
         new_event: newEvent,
       });
     } catch (error: any) {
+      console.error("❌ Error creating event:", error);
       return next(
-        new ErrorHandler("Something went wrong. Please try again.", 400)
+        new ErrorHandler(error.message || "Something went wrong. Please try again.", 400)
       );
     }
   }
@@ -196,6 +218,23 @@ export const updateEvent = CatchAsyncError(
         };
       }
 
+      // Update poster
+      if (req.body.poster) {
+        if (event.poster?.public_id) {
+          await imagekit.deleteFile(event.poster.public_id);
+        }
+
+        const uploadedPoster = await imagekit.upload({
+          file: req.body.poster,
+          fileName: `event_poster_${Date.now()}`,
+          folder: "/event_posters",
+        });
+        event.poster = {
+          public_id: uploadedPoster.fileId,
+          url: uploadedPoster.url,
+        };
+      }
+
       // Update payment QR
       if (req.body.paymentQR) {
         if (event.paymentQR?.public_id) {
@@ -227,6 +266,7 @@ export const updateEvent = CatchAsyncError(
       if (typeof registration_open !== "undefined")
         event.registration_open = registration_open;
       if (whatsappLink) event.whatsappLink = whatsappLink;
+      if (req.body.contactInfo) event.contactInfo = req.body.contactInfo;
 
       await event.save();
 
