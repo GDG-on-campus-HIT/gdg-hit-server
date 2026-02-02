@@ -1,14 +1,17 @@
 require("dotenv").config();
-import cookieParser from "cookie-parser";
+
 import express, { NextFunction, Request, Response } from "express";
-export const app = express();
+import cookieParser from "cookie-parser";
 import cors from "cors";
-import { ErrorMiddleware } from "./middleware/error";
-import { rateLimit } from "express-rate-limit";
-import userRouter from "./routes/user.route";
 import passport from "passport";
+import { rateLimit } from "express-rate-limit";
+
 import "./config/google.strategy";
+import { ErrorMiddleware } from "./middleware/error";
 import { accessTokenOptions, refreshTokenOptions } from "./utlis/jwt";
+
+// Routes
+import userRouter from "./routes/user.route";
 import memberRouter from "./routes/members.route";
 import eventRouter from "./routes/event.route";
 import testimonialRouter from "./routes/testimonial.route";
@@ -20,20 +23,21 @@ import mailRoute from "./routes/mail.route";
 import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
 import blogRouter from "./routes/blog.route";
+import membersIdRouter from "./routes/membersId.route";
+import eventRegistration from "./routes/eventregistration.route";
+import quizRoute from "./routes/quiz.route";
 import formRouter from "./routes/form.route";
 import recruitmentFormRouter from "./routes/recruitmentForm.route";
 
-import swaggerUi from 'swagger-ui-express';
-import eventRegistration from "./routes/eventregistration.route";
-import quizRoute from "./routes/quiz.route";
-import membersIdRouter from "./routes/membersId.route";
-// const swaggerDocument = require('./swagger-output.json');
+export const app = express();
 
+/* ---------------------------- BASIC MIDDLEWARE ---------------------------- */
 
 app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
-  res.setTimeout(0); // Disable timeout
+  res.setTimeout(0);
   next();
 });
 
@@ -42,29 +46,43 @@ app.enable("trust proxy");
 
 app.use(cookieParser());
 
-// cors = cross origin resource sharing
+/* ---------------------------- CORS (FIXED) ---------------------------- */
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://gdghit.site",
+  "https://admin.gdghit.site",
+  "https://gdg-hit-main-ffch.vercel.app",
+  "https://blog.gdghit.site",
+  "https://my-admin-panel-livid.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:3002",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      // "https://gdg-on-campus-hit.vercel.app",
-      "https://gdghit.site",
-      "https://admin.gdghit.site",
-      "https://gdg-hit-main-ffch.vercel.app",
-      "https://blog.gdghit.site",
-      "https://my-admin-panel-livid.vercel.app",
-    ],
+    origin: function (origin, callback) {
+      // allow requests with no origin (like Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// api request limit
+// 🔥 REQUIRED for preflight
+app.options("*", cors());
+
+/* ---------------------------- RATE LIMIT (MOVED UP) ---------------------------- */
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 100,
@@ -72,12 +90,9 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-// app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use(limiter);
 
-// app.get('/docs-json', (req, res) => {
-//     res.json(swaggerDocument);
-// });
-
+/* ---------------------------- ROUTES ---------------------------- */
 
 app.use("/api/v1", userRouter);
 app.use("/api/v1", memberRouter);
@@ -93,24 +108,14 @@ app.use("/api/v1", recruitmentRouter);
 app.use("/api/v1", blogRouter);
 app.use("/api/v1", membersIdRouter);
 app.use("/api/v1", eventRegistration);
-app.use("/api/v1", quizRoute)
-app.use("/api/v1", formRouter)
-app.use("/api/v1", recruitmentFormRouter)
+app.use("/api/v1", quizRoute);
+app.use("/api/v1", formRouter);
+app.use("/api/v1", recruitmentFormRouter);
 
-//google auth route
+/* ---------------------------- GOOGLE AUTH ---------------------------- */
+
 app.get(
   "/auth/google",
-  // (req, res, next) => {
-  //   const redirectTo = req.query.redirectTo || "/";
-  //   res.cookie("redirectTo", redirectTo, {
-  //     httpOnly: false,
-  //     secure: true,
-  //     sameSite: "none",
-  //     maxAge: 10 * 60 * 1000,
-  //     ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.site" }),
-  //   });
-  //   next();
-  // },
   passport.authenticate("google", {
     session: false,
     scope: ["profile", "email"],
@@ -123,55 +128,48 @@ app.get(
     session: false,
     failureRedirect: `${process.env.FRONTEND_HOST}/signin`,
   }),
-  function (req, res) {
-    const { user, accessToken, refreshToken } = req.user as any;
+  (req, res) => {
+    const { accessToken, refreshToken } = req.user as any;
 
     res.cookie("access_token", accessToken, accessTokenOptions);
     res.cookie("refresh_token", refreshToken, refreshTokenOptions);
 
-    let redirectUrl = req.cookies.redirectTo || "/";
-    const frontendHost = process.env.FRONTEND_HOST || "http://localhost:3000";
-
-    // Ensure redirect URL points to frontend
-    if (!redirectUrl.startsWith("http")) {
-      redirectUrl = `${frontendHost}${decodeURIComponent(redirectUrl)}`;
-    }
-
-    res.clearCookie("redirectTo");
-
-    const targetOrigin = process.env.NODE_ENV === "production" ? "https://gdghit.site" : frontendHost;
+    const frontendHost =
+      process.env.FRONTEND_HOST || "http://localhost:3000";
 
     res.send(
       `<script>
-      window.opener.postMessage({ success: true, redirectUrl: '${redirectUrl}' }, '${targetOrigin}');
-      window.close();
-    </script>`
+        window.opener.postMessage({ success: true }, '${frontendHost}');
+        window.close();
+      </script>`
     );
   }
 );
 
-// testing api
-app.get("/", (req: Request, res: Response, next: NextFunction) => {
+/* ---------------------------- TEST ROUTES ---------------------------- */
+
+app.get("/", (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: "Hello Server",
   });
 });
 
-app.get("/test", (req: Request, res: Response, next: NextFunction) => {
+app.get("/test", (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: "API is working",
   });
 });
 
-//unknown route
+/* ---------------------------- 404 HANDLER ---------------------------- */
+
 app.all("*", (req: Request, res: Response, next: NextFunction) => {
   const err = new Error(`Route ${req.originalUrl} not found`) as any;
   err.statusCode = 404;
   next(err);
 });
 
-// middleware calls
-app.use(limiter);
+/* ---------------------------- ERROR MIDDLEWARE ---------------------------- */
+
 app.use(ErrorMiddleware);

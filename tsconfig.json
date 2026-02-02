@@ -4,15 +4,21 @@
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "target": "es6",
+        "skipLibCheck": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
         "sourceMap": true,
         "outDir": "dist",
         "baseUrl": ".",
-        "strict": true, 
+        "strict": true,
         "paths": {
-            "*": ["node_modules/*", "types/*"]
+            "*": [
+                "node_modules/*",
+                "types/*"
+            ]
         }
     },
-    "include": ["./**/*"]
-    }
+    "include": [
+        "./**/*"
+    ]
+}
