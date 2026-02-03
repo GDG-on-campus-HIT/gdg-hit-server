@@ -13,10 +13,6 @@ import {
 
 const memberRouter = express.Router();
 
-memberRouter.get("/members", getMembers);
-
-memberRouter.get("/members/:id", getMemberById);
-
 // Get all members including inactive (Admin only)
 memberRouter.get(
   "/members/admin/all",
@@ -62,6 +58,10 @@ memberRouter.delete(
   authorizeRoles("admin"),
   deleteMember
 );
+
+memberRouter.get("/members", getMembers);
+
+memberRouter.get("/members/:id", getMemberById);
 
 
 export default memberRouter;
