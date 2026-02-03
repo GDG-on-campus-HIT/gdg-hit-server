@@ -69,27 +69,34 @@ export const getMembers = CatchAsyncError(
       const designationOrder = [
         "Founder",
         "Organizer",
-        "Treasurer",
-        "Secretary",
         "Co-Organizer",
-        "Technical Lead",
+        "Secretary",
+        "Join Secretary",
+        "Treasurer",
+        "Joint Treasurer",
         "Management Head",
-        "PR and Mangement Lead",
+        "Joint Management Head",
+        "Public Relation Head",
+        "Joint Public Relation Head",
+        "Technical Lead",
+        "Joint Technical Lead",
         "Web Development Lead",
         "App Development Lead",
         "Machine Learning Lead",
         "Content Writer Lead",
+        "Joint Content Writer Lead",
         "Video Editor Lead",
+        "Joint Video Editor Lead",
         "Graphic Designer Lead",
-        "Technical Member",
         "Web Developer",
         "App Developer",
         "Machine Learning",
-        "PR",
+        "Technical Member",
         "Video Editor",
         "Graphic Designer",
         "Content Writer",
         "Photographer",
+        "PR",
       ];
 
       // Sorting function
@@ -111,18 +118,26 @@ export const getMembers = CatchAsyncError(
         coreTeam: members.filter((member) =>
           [
             "Organizer",
-            "Treasurer",
-            "Secretary",
             "Co-Organizer",
-            "Technical Lead",
+            "Secretary",
+            "Join Secretary",
+            "Treasurer",
+            "Joint Treasurer",
             "Management Head",
-            "PR and Mangement Lead",
+            "Joint Management Head",
+            "Public Relation Head",
+            "Joint Public Relation Head",
+            "Technical Lead",
+            "Joint Technical Lead",
             "Web Development Lead",
             "App Development Lead",
             "Machine Learning Lead",
             "Content Writer Lead",
+            "Joint Content Writer Lead",
             "Video Editor Lead",
+            "Joint Video Editor Lead",
             "Graphic Designer Lead",
+            "PR and Mangement Lead", // Legacy support
           ].includes(member.designation)
         ),
         techTeam: {
@@ -135,22 +150,29 @@ export const getMembers = CatchAsyncError(
           machineLearning: members.filter((member) =>
             ["Machine Learning Lead", "Machine Learning"].includes(member.designation)
           ),
-          techMember: members.filter((member) => member.designation === "Technical Member"),
+          techMember: members.filter((member) =>
+            ["Technical Member", "Technical Lead", "Joint Technical Lead"].includes(member.designation)
+          ),
         },
         mediaTeam: {
           videoEditor: members.filter((member) =>
-            ["Video Editor Lead", "Video Editor"].includes(member.designation)
+            ["Video Editor Lead", "Joint Video Editor Lead", "Video Editor"].includes(member.designation)
           ),
           graphicDesigner: members.filter((member) =>
             ["Graphic Designer Lead", "Graphic Designer"].includes(member.designation)
           ),
           contentWriter: members.filter((member) =>
-            ["Content Writer Lead", "Content Writer"].includes(member.designation)
+            ["Content Writer Lead", "Joint Content Writer Lead", "Content Writer"].includes(member.designation)
           ),
           photographer: members.filter((member) => member.designation === "Photographer"),
         },
         prTeam: members.filter((member) =>
-          ["PR and Mangement Lead", "PR"].includes(member.designation)
+          [
+            "Public Relation Head",
+            "Joint Public Relation Head",
+            "PR",
+            "PR and Mangement Lead", // Legacy
+          ].includes(member.designation)
         ),
       };
 
