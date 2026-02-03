@@ -140,7 +140,7 @@ export const registerParticipant = async (req: Request, res: Response) => {
   ];
 
   if (!validBatches.includes(batch)) {
-    return res.status(400).json({ error: 'Invalid batch. Must be one of: 1st, 2nd, 3rd, 4th, 5th' });
+    return res.status(400).json({ error: 'Invalid batch. Must be one of: 1st, 2nd, 3rd, 4th,  5th' });
   }
 
   if (!validYears.includes(year)) {
