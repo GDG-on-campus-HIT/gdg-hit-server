@@ -49,11 +49,11 @@ const membersSchema = new Schema<IMembers>(
     },
     github_url: {
       type: String,
-      required: true,
+      required: false,
     },
     linkedin_url: {
       type: String,
-      required: true,
+      required: false,
     },
     isActive: {
       type: Boolean,

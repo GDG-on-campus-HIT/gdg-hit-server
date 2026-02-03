@@ -36,6 +36,12 @@ export const ErrorMiddleware = (
     err = new ErrorHandler(message, 401); // Use 401 for unauthorized
   }
 
+  // Handle Mongoose Validation Error
+  if (err.name === "ValidationError") {
+    const message = Object.values(err.errors).map((value: any) => value.message).join(", ");
+    err = new ErrorHandler(message, 400);
+  }
+
   // Send response with status code and message
   res.status(err.statusCode).json({
     success: false,

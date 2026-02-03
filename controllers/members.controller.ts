@@ -272,26 +272,36 @@ export const updateMember = CatchAsyncError(
 
       // Handle profile image update
       if (profile_image) {
-        try {
-          // Delete the old image from ImageKit
-          if (member.profile_image?.public_id) {
+        // 1. Attempt to delete old image (Non-blocking)
+        if (member.profile_image?.public_id) {
+          try {
+            console.log("Attempting to delete old image:", member.profile_image.public_id);
             await imagekit.deleteFile(member.profile_image.public_id);
+            console.log("Old image deleted successfully");
+          } catch (deleteError: any) {
+            console.error("Failed to delete old image (ignoring):", JSON.stringify(deleteError));
+            // We ignore delete errors to allow new upload to proceed
           }
+        }
 
-          // Upload the new image
+        // 2. Upload new image
+        try {
+          console.log("Attempting to upload new image...");
           const myCloud = await imagekit.upload({
             file: profile_image,
             fileName: `member_${Date.now()}`,
             folder: "/members",
           });
+          console.log("New image uploaded successfully:", myCloud.fileId);
 
           member.profile_image = {
             public_id: myCloud.fileId,
             url: myCloud.url,
           };
         } catch (imageError: any) {
-          console.error("Image upload error:", imageError);
-          return next(new ErrorHandler("Failed to upload profile image: " + imageError.message, 400));
+          console.error("Image upload error full object:", JSON.stringify(imageError, null, 2));
+          const errorMsg = imageError?.message || imageError?.displayMessage || JSON.stringify(imageError);
+          return next(new ErrorHandler("Failed to upload profile image: " + errorMsg, 400));
         }
       }
 
