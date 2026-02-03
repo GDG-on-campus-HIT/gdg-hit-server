@@ -15,6 +15,7 @@ export const isAuthenticate = CatchAsyncError(
     }
 
     if (!access_token) {
+      console.log("Auth failed: No access token provided");
       return next(new ErrorHandler("Please login to access the resource", 400));
     }
 
@@ -24,12 +25,14 @@ export const isAuthenticate = CatchAsyncError(
     ) as JwtPayload;
 
     if (!decoded) {
+      console.log("Auth failed: Token verification failed");
       return next(new ErrorHandler("access token is not valid", 400));
     }
 
     const user = await redis.get(decoded.id);
 
     if (!user) {
+      console.log(`Auth failed: User not found in Redis for id ${decoded.id}`);
       return next(new ErrorHandler("user not found", 400));
     }
 
