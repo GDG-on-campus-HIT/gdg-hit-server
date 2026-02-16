@@ -67,6 +67,7 @@ export const getMembers = CatchAsyncError(
 
       // Custom sorting order for designations
       const designationOrder = [
+        "Faculty Co-ordinator",
         "Founder",
         "Organizer",
         "Co-Organizer",
@@ -115,6 +116,7 @@ export const getMembers = CatchAsyncError(
       // Categorize members into Founder, Core Team, Media Team, PR Team, and Tech Team
       const categorizedMembers = {
         founder: members.filter((member) => member.designation === "Founder"),
+        facultyCoOrdinator: members.filter((member) => member.designation === "Faculty Co-ordinator"),
         coreTeam: members.filter((member) =>
           [
             "Organizer",
