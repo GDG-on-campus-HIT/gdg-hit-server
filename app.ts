@@ -59,6 +59,7 @@ const allowedOrigins = [
   "https://gdg-hit-main-ffch.vercel.app",
   "https://blog.gdghit.site",
   "https://my-admin-panel-livid.vercel.app",
+  "https://gdghit.dev"
 ];
 
 app.use(
