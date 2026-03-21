@@ -62,6 +62,24 @@ export const getAllRecruitmentForms = CatchAsyncError(
     }
 );
 
+export const getRecruitmentFormById = CatchAsyncError(
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { id } = req.params;
+            const form = await RecruitmentFormModel.findById(id);
+            if (!form) {
+                return next(new ErrorHandler("Form not found", 404));
+            }
+            res.status(200).json({
+                success: true,
+                form
+            });
+        } catch (error: any) {
+            return next(new ErrorHandler(error.message, 500));
+        }
+    }
+);
+
 // Get the currently active recruitment form (for frontend rendering)
 export const getActiveRecruitmentForm = CatchAsyncError(
     async (req: Request, res: Response, next: NextFunction) => {
