@@ -278,20 +278,23 @@ export const checkUserRegistration = CatchAsyncError(
 
       const existingApplication = await RecruitmentModel.findOne(query);
 
-      // If application exists, fetch WhatsApp links from the recruitment form
-      let whatsappGroupLinks: Record<string, string> = {} ;
+      // If application exists, get WhatsApp links
+      let whatsappGroupLinks: Record<string, string> = {};
       if (existingApplication) {
-        const recruitmentForm = await RecruitmentFormModel.findById(existingApplication.formId);
-        if (recruitmentForm && recruitmentForm.roles) {
-          // Map selected positions to their WhatsApp links
-          existingApplication.generalInfo.positions.forEach((selectedPosition: string) => {
-            const roleData = recruitmentForm.roles.find(
-              (role) => role.roleName === selectedPosition
-            );
-            if (roleData && roleData.whatsappLink) {
-              whatsappGroupLinks[selectedPosition] = roleData.whatsappLink;
-            }
-          });
+        // Always fetch from the recruitment form to ensure latest/correct links
+        if (existingApplication.formId) {
+          const recruitmentForm = await RecruitmentFormModel.findById(existingApplication.formId);
+          if (recruitmentForm && recruitmentForm.roles && recruitmentForm.roles.length > 0) {
+            // Map selected positions to their WhatsApp links
+            existingApplication.generalInfo.positions.forEach((selectedPosition: string) => {
+              const roleData = recruitmentForm.roles.find(
+                (role) => role.roleName === selectedPosition
+              );
+              if (roleData && roleData.whatsappLink) {
+                whatsappGroupLinks[selectedPosition] = roleData.whatsappLink;
+              }
+            });
+          }
         }
       }
 
@@ -303,7 +306,7 @@ export const checkUserRegistration = CatchAsyncError(
             id: existingApplication._id,
             status: existingApplication.status,
             positions: existingApplication.generalInfo.positions,
-            whatsappGroupLinks, // NEW: WhatsApp links for selected positions
+            whatsappGroupLinks, // WhatsApp links for selected positions
           }
           : null,
       });
