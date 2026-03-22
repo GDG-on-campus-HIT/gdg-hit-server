@@ -151,7 +151,7 @@ export const registerParticipant = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid department. Please select a valid department from the list' });
   }
 
-  const userId = (req.user as { _id: string })._id || "1";
+  const userId = req.user?._id?.toString() || "1";
 
   try {
     // Validate ObjectIds
@@ -228,7 +228,7 @@ export const checkIfRegistered = CatchAsyncError(
         return next(new ErrorHandler("Event ID is required.", 400));
       }
 
-      const userId = (req.user as { _id: string })._id || "";
+      const userId = req.user?._id?.toString() || "";
       const user = await userModel.findById(userId);
 
       if (!user) {
