@@ -11,6 +11,10 @@ import {
   searchRecruitmentData,
   updateRecruitmentData,
   getAllUsersWithApplications,
+  getRecruitmentForm,
+  getAllRecruitmentForms,
+  updateRoleWhatsappLink,
+  updateRoleWhatsappLinkByName,
 } from "../controllers/recruitment.controller";
 import { getActiveRecruitmentForm } from "../controllers/recruitmentForm.controller";
 
@@ -74,6 +78,40 @@ recruitmentRouter.get(
   isAuthenticate,
   authorizeRoles("admin"),
   getAllUsersWithApplications
+);
+
+// ============ WhatsApp Group Links Management Routes ============
+
+// Admin: Get all recruitment forms
+recruitmentRouter.get(
+  `${recruitmentBase}/forms`,
+  isAuthenticate,
+  authorizeRoles("admin"),
+  getAllRecruitmentForms
+);
+
+// Admin: Get specific recruitment form
+recruitmentRouter.get(
+  `${recruitmentBase}/forms/:formId`,
+  isAuthenticate,
+  authorizeRoles("admin"),
+  getRecruitmentForm
+);
+
+// Admin: Update WhatsApp link for a role (by role ID)
+recruitmentRouter.patch(
+  `${recruitmentBase}/forms/:formId/roles/:roleId/whatsapp`,
+  isAuthenticate,
+  authorizeRoles("admin"),
+  updateRoleWhatsappLink
+);
+
+// Admin: Update WhatsApp link for a role (by role name) - More convenient for admin panel
+recruitmentRouter.patch(
+  `${recruitmentBase}/forms/:formId/role-whatsapp`,
+  isAuthenticate,
+  authorizeRoles("admin"),
+  updateRoleWhatsappLinkByName
 );
 
 

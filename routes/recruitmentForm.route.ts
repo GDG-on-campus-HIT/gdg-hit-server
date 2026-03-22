@@ -7,7 +7,8 @@ import {
     getActiveRecruitmentForm,
     updateRecruitmentForm,
     deleteRecruitmentForm,
-    getRecruitmentStats
+    getRecruitmentStats,
+    getRecruitmentFormById
 } from "../controllers/recruitmentForm.controller";
 
 const recruitmentFormRouter = express.Router();
@@ -29,6 +30,12 @@ recruitmentFormRouter.get(
     isAuthenticate,
     authorizeRoles("admin"),
     getAllRecruitmentForms
+);
+recruitmentFormRouter.get(
+    `${recruitmentBase}/forms/:id`,
+    isAuthenticate,
+    authorizeRoles("admin"),
+    getRecruitmentFormById
 );
 
 recruitmentFormRouter.put(

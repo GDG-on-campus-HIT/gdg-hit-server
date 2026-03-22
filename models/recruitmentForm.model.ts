@@ -15,6 +15,7 @@ export interface IRoleDefinition {
     roleName: string;       // e.g., "Web Developer"
     description?: string;
     fields: IFormField[];   // Fields specific to this role
+    whatsappLink?: string;  // WhatsApp group link for this domain/role
 }
 
 export interface IRecruitmentForm extends Document {
@@ -32,6 +33,7 @@ const recruitmentFormSchema = new Schema<IRecruitmentForm>({
     roles: [{
         roleName: { type: String, required: true },
         description: String,
+        whatsappLink: { type: String, default: "" },
         fields: [
             {
                 name: { type: String, required: true },

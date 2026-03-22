@@ -85,6 +85,8 @@ export interface IRecruitment extends Document {
   roleSpecific: Record<string, any>; // Flexible structure to support dynamic forms
   // Step 4
   finalInfo: IFinalInfo;
+  // WhatsApp Group Links for selected domains
+  whatsappGroupLinks?: Record<string, string>; // Maps domain/position to WhatsApp group link
   // Additional fields
   status: "pending" | "shortlisted" | "rejected" | "accepted";
   createdAt: Date;
@@ -143,6 +145,12 @@ const recruitmentSchema = new Schema<IRecruitment>(
     finalInfo: {
       linkedIn: String,
       previousClubs: String,
+    },
+
+    // WhatsApp Group Links for selected domains/positions
+    whatsappGroupLinks: {
+      type: Schema.Types.Mixed,
+      default: {}
     },
 
     // Additional fields

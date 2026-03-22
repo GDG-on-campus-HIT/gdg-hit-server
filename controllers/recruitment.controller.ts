@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
+import { RecruitmentFormModel } from "../models/recruitmentForm.model";
 import userModel, { IUser } from "../models/user.model";
 import mongoose, { Document } from "mongoose";
 
@@ -139,6 +140,23 @@ export const submitApplication = CatchAsyncError(
         }
       });
 
+      // Fetch WhatsApp group links for selected positions/domains
+      let whatsappGroupLinks: Record<string, string> = {};
+      if (formId) {
+        const recruitmentForm = await RecruitmentFormModel.findById(formId);
+        if (recruitmentForm && recruitmentForm.roles) {
+          // Map selected positions to their WhatsApp links
+          generalInfo.positions.forEach((selectedPosition: string) => {
+            const roleData = recruitmentForm.roles.find(
+              (role) => role.roleName === selectedPosition
+            );
+            if (roleData && roleData.whatsappLink) {
+              whatsappGroupLinks[selectedPosition] = roleData.whatsappLink;
+            }
+          });
+        }
+      }
+
       // console.log("Creating new application...");
       const application = await RecruitmentModel.create({
         user: userId,
@@ -146,6 +164,7 @@ export const submitApplication = CatchAsyncError(
         generalInfo,
         roleSpecific: roleSpecificData,
         finalInfo,
+        whatsappGroupLinks,
         status: "pending",
       });
 
@@ -648,6 +667,142 @@ export const getAllUsersWithApplications = CatchAsyncError(
           usersData: filteredUsers,
           pagination,
         },
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// Admin: Get recruitment form with roles and WhatsApp links
+export const getRecruitmentForm = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { formId } = req.params;
+
+      if (!formId) {
+        return next(new ErrorHandler("Form ID is required", 400));
+      }
+
+      const form = await RecruitmentFormModel.findById(formId);
+
+      if (!form) {
+        return next(new ErrorHandler("Recruitment form not found", 404));
+      }
+
+      res.status(200).json({
+        success: true,
+        form,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// Admin: Get all recruitment forms
+export const getAllRecruitmentForms = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const forms = await RecruitmentFormModel.find().sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        forms,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// Admin: Update WhatsApp link for a specific role in a form
+export const updateRoleWhatsappLink = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { formId, roleId } = req.params;
+      const { whatsappLink } = req.body;
+
+      if (!formId || !roleId) {
+        return next(new ErrorHandler("Form ID and Role ID are required", 400));
+      }
+
+      if (!whatsappLink || typeof whatsappLink !== "string") {
+        return next(new ErrorHandler("WhatsApp link must be a non-empty string", 400));
+      }
+
+      // Validate WhatsApp link format (basic validation)
+      if (!whatsappLink.includes("whatsapp") && !whatsappLink.includes("chat.whatsapp")) {
+        return next(new ErrorHandler("Please provide a valid WhatsApp group link", 400));
+      }
+
+      const form = await RecruitmentFormModel.findById(formId);
+
+      if (!form) {
+        return next(new ErrorHandler("Recruitment form not found", 404));
+      }
+
+      // Find and update the role's WhatsApp link
+      const roleIndex = form.roles.findIndex((role) => role._id?.toString() === roleId);
+
+      if (roleIndex === -1) {
+        return next(new ErrorHandler("Role not found in this form", 404));
+      }
+
+      form.roles[roleIndex].whatsappLink = whatsappLink;
+      await form.save();
+
+      res.status(200).json({
+        success: true,
+        message: "WhatsApp link updated successfully",
+        form,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+// Admin: Update WhatsApp link by role name
+export const updateRoleWhatsappLinkByName = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { formId } = req.params;
+      const { roleName, whatsappLink } = req.body;
+
+      if (!formId || !roleName) {
+        return next(new ErrorHandler("Form ID and Role Name are required", 400));
+      }
+
+      if (!whatsappLink || typeof whatsappLink !== "string") {
+        return next(new ErrorHandler("WhatsApp link must be a non-empty string", 400));
+      }
+
+      // Validate WhatsApp link format (basic validation)
+      if (!whatsappLink.includes("whatsapp") && !whatsappLink.includes("chat.whatsapp")) {
+        return next(new ErrorHandler("Please provide a valid WhatsApp group link", 400));
+      }
+
+      const form = await RecruitmentFormModel.findById(formId);
+
+      if (!form) {
+        return next(new ErrorHandler("Recruitment form not found", 404));
+      }
+
+      // Find and update the role's WhatsApp link by role name
+      const roleIndex = form.roles.findIndex((role) => role.roleName === roleName);
+
+      if (roleIndex === -1) {
+        return next(new ErrorHandler(`Role "${roleName}" not found in this form`, 404));
+      }
+
+      form.roles[roleIndex].whatsappLink = whatsappLink;
+      await form.save();
+
+      res.status(200).json({
+        success: true,
+        message: "WhatsApp link updated successfully",
+        form,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
