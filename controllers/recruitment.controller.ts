@@ -279,7 +279,7 @@ export const checkUserRegistration = CatchAsyncError(
       const existingApplication = await RecruitmentModel.findOne(query);
 
       // If application exists, fetch WhatsApp links from the recruitment form
-      let whatsappGroupLinks: Record<string, string> = {};
+      let whatsappGroupLinks: Record<string, string> = {} ;
       if (existingApplication) {
         const recruitmentForm = await RecruitmentFormModel.findById(existingApplication.formId);
         if (recruitmentForm && recruitmentForm.roles) {
