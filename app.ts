@@ -59,6 +59,9 @@ const allowedOrigins = [
   "https://gdg-hit-main-ffch.vercel.app",
   "https://blog.gdghit.site",
   "https://my-admin-panel-livid.vercel.app",
+  "https://gdghit.dev",
+  "https://admin.gdghit.dev",
+  "https://blog.gdghit.dev"
 ];
 
 app.use(
@@ -88,6 +91,11 @@ const limiter = rateLimit({
   limit: 100,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  // Explicitly disable trust proxy validation
+  // If you're behind a reverse proxy (like nginx, cloudflare), this allows the rate limiter to work
+  validate: {
+    trustProxy: false, // Disable the strict validation
+  },
 });
 
 app.use(limiter);

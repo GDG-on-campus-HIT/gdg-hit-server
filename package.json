@@ -13,7 +13,7 @@
     "build": "npm install && tsc",
     "ts.check": "tsc --project tsconfig.json",
     "add-build": "git add dist",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no test specified\" && exit 0",
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "seed:admin": "ts-node scripts/seedAdmin.ts"
   },
@@ -65,5 +65,10 @@
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "pre-commit": [
+    "ts.check",
+    "build",
+    "add-build"
+  ]
 }

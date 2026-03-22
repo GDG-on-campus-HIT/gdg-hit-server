@@ -16,9 +16,12 @@ import {
   updateRoleWhatsappLink,
   updateRoleWhatsappLinkByName,
 } from "../controllers/recruitment.controller";
+import { getActiveRecruitmentForm } from "../controllers/recruitmentForm.controller";
 
 const recruitmentRouter = express.Router();
-const recruitmentBase = "/recruitment"; 
+const recruitmentBase = "/recruitment";
+
+recruitmentRouter.get(`${recruitmentBase}/active-form`, getActiveRecruitmentForm);
 
 recruitmentRouter.get(
   `${recruitmentBase}/applications`,
