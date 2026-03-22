@@ -278,6 +278,23 @@ export const checkUserRegistration = CatchAsyncError(
 
       const existingApplication = await RecruitmentModel.findOne(query);
 
+      // If application exists, fetch WhatsApp links from the recruitment form
+      let whatsappGroupLinks: Record<string, string> = {} ;
+      if (existingApplication) {
+        const recruitmentForm = await RecruitmentFormModel.findById(existingApplication.formId);
+        if (recruitmentForm && recruitmentForm.roles) {
+          // Map selected positions to their WhatsApp links
+          existingApplication.generalInfo.positions.forEach((selectedPosition: string) => {
+            const roleData = recruitmentForm.roles.find(
+              (role) => role.roleName === selectedPosition
+            );
+            if (roleData && roleData.whatsappLink) {
+              whatsappGroupLinks[selectedPosition] = roleData.whatsappLink;
+            }
+          });
+        }
+      }
+
       res.status(200).json({
         success: true,
         isRegistered: !!existingApplication,
@@ -286,6 +303,7 @@ export const checkUserRegistration = CatchAsyncError(
             id: existingApplication._id,
             status: existingApplication.status,
             positions: existingApplication.generalInfo.positions,
+            whatsappGroupLinks, // NEW: WhatsApp links for selected positions
           }
           : null,
       });

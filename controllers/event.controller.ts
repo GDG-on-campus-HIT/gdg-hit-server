@@ -721,7 +721,7 @@ export const addRegistration = CatchAsyncError(
         );
       }
 
-      const userId = (req.user as { _id: string })._id || "";
+      const userId = req.user?._id?.toString() || "";
       const user = await userModel.findById(userId);
 
       if (!user) {
@@ -979,7 +979,7 @@ export const checkIfRegistered = CatchAsyncError(
         return next(new ErrorHandler("Event ID is required.", 400));
       }
 
-      const userId = (req.user as { _id: string })._id || "";
+      const userId = req.user?._id?.toString() || "";
       const user = await userModel.findById(userId);
 
       if (!user) {

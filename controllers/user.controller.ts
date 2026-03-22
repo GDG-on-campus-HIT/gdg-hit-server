@@ -201,7 +201,7 @@ export const logoutUser = CatchAsyncError(
       });
 
       // Delete user session from Redis
-      const userId = (req.user as { _id: string })._id || "";
+      const userId = req.user?._id?.toString() || "";
 
       if (userId) {
         redis.del(userId);
@@ -274,7 +274,7 @@ export const updateAccessToken = CatchAsyncError(
 export const getUserInfo = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.user as { _id: string })._id || "";
+      const userId = req.user?._id?.toString() || "";
       getUserById(userId, res);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
@@ -296,7 +296,7 @@ export const updateUserInfo = CatchAsyncError(
     try {
       const { name, department, classRollNo, whatsappNo } =
         req.body as IUserUpdateInfo;
-      const userId = (req.user as { _id: string })._id;
+      const userId = req.user?._id?.toString();
       // Find the user by ID
       const user = await userModel.findById(userId);
 
@@ -322,7 +322,9 @@ export const updateUserInfo = CatchAsyncError(
       await user.save();
 
       // Update user information in Redis
-      await redis.set(userId, JSON.stringify(user));
+      if (userId) {
+        await redis.set(userId, JSON.stringify(user));
+      }
 
       // Return the updated user information in response
       res.status(200).json({
@@ -364,7 +366,7 @@ export const updatePassword = CatchAsyncError(
       }
 
       const user = await userModel
-        .findById((req.user as { _id: string })._id)
+        .findById(req.user?._id?.toString())
         .select("+password");
       if (!user || !user.password) {
         return next(new ErrorHandler("Invalid user", 400));
@@ -383,7 +385,7 @@ export const updatePassword = CatchAsyncError(
       // Update user session in Redis
       try {
         await redis.set(
-          (req.user as { _id: string })._id as string,
+          req.user?._id?.toString() as string,
           JSON.stringify(user)
         );
       } catch (redisError) {
@@ -423,7 +425,7 @@ export const sendPasswordResetEmail = CatchAsyncError(
         );
       }
 
-      const secret = (user._id as string) + process.env.ACCESS_TOKEN;
+      const secret = user._id.toString() + process.env.ACCESS_TOKEN;
       const token = jwt.sign({ userID: user._id }, secret, {
         expiresIn: "15m",
       });
@@ -530,7 +532,7 @@ export const resetPassword = CatchAsyncError(
       }
 
       // Check if the reset token is valid and not expired
-      const secret = (user._id as string) + process.env.ACCESS_TOKEN;
+      const secret = user._id.toString() + process.env.ACCESS_TOKEN;
       try {
         jwt.verify(token, secret);
       } catch (error) {

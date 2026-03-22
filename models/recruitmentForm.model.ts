@@ -12,6 +12,7 @@ export interface IFormField {
 }
 
 export interface IRoleDefinition {
+    _id?: mongoose.Schema.Types.ObjectId;  // Mongoose auto-generated ID for subdocument
     roleName: string;       // e.g., "Web Developer"
     description?: string;
     fields: IFormField[];   // Fields specific to this role

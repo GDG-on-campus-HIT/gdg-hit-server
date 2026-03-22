@@ -6,7 +6,7 @@ import userModel from "../models/user.model";
 import cloudinary from "cloudinary";
 import { certificateModel } from "../models/certificate.model";
 import { Readable } from "stream";
-import { ObjectId } from "mongoose";
+import { ObjectId, Schema } from "mongoose";
 
 
 export const addCertificate = CatchAsyncError(
@@ -80,7 +80,7 @@ export const addCertificate = CatchAsyncError(
             verification_code,
           });
 
-          existingRegistration.certificate = newCertificate._id as ObjectId;
+          existingRegistration.certificate = newCertificate._id as unknown as Schema.Types.ObjectId;
           await existingRegistration.save();
           
           res.status(201).json({
@@ -182,7 +182,7 @@ export const updateCertificate = CatchAsyncError(
             };
             await existingCertificate.save();
 
-            existingRegistration.certificate = existingCertificate._id as ObjectId;
+            existingRegistration.certificate = existingCertificate._id as unknown as Schema.Types.ObjectId;
             await existingRegistration.save();
 
             res.status(200).json({
@@ -198,7 +198,7 @@ export const updateCertificate = CatchAsyncError(
         existingCertificate.registration = registration;
         await existingCertificate.save();
 
-        existingRegistration.certificate = existingCertificate._id as ObjectId;
+        existingRegistration.certificate = existingCertificate._id as unknown as Schema.Types.ObjectId;
         await existingRegistration.save();
 
         res.status(200).json({

@@ -125,7 +125,7 @@ export const generateQuiz = async (req: Request, res: Response) => {
   const { eventId } = req.params;
   const proficiencies: ProficiencyInput = req.body;
 
-  const userId = (req.user as { _id: string })._id || ""; // Assuming user ID is available in the request object
+  const userId = req.user?._id?.toString() || ""; // Assuming user ID is available in the request object
   try {
     // Verify participant exists
 
@@ -290,7 +290,7 @@ export const generateQuiz = async (req: Request, res: Response) => {
 export const getUserQuiz = async (req: Request, res: Response) => {
   const { eventId } = req.params;
 
-  const userId = (req.user as { _id: string })._id || ""; // Assuming user ID is available in the request object
+  const userId = req.user?._id?.toString() || ""; // Assuming user ID is available in the request object
   // Validate parameters
   if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
     return res.status(400).json({ error: "Valid event ID is required" });
