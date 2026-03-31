@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import userModel, { IUser } from "../models/user.model";
 import ErrorHandler from "../utlis/ErrorHandler";
-import bcrypt from "bcryptjs";
 import { AdminActivityLogModel } from "../models/adminActivityLog.model";
 
 // Utility function to generate random password
@@ -65,12 +64,12 @@ export const addAdmin = CatchAsyncError(
       // Auto-generate password if not provided
       const adminPassword = password || generateRandomPassword();
 
-      // Create new admin user
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      // Create new admin user. Password must remain plain here because
+      // the user model pre-save hook already hashes it.
       const newAdmin = await userModel.create({
         name,
         email,
-        password: hashedPassword,
+        password: adminPassword,
         role: "admin",
         isVerified: true, // Admins are automatically verified
       });
