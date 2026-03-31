@@ -15,10 +15,10 @@ const membersIdRouter = express.Router();
 membersIdRouter.get("/all", getAllMemberIdCards);
 membersIdRouter.get("/:memberId", getMemberIdCard);
 
-// Admin only routes - Require authentication and admin role
-membersIdRouter.post("/create", isAuthenticate, authorizeRoles("admin"), createMemberIdCard);
-membersIdRouter.put("/update/:id", isAuthenticate, authorizeRoles("admin"), updateMemberIdCard);
-membersIdRouter.delete("/deleteId/:id", isAuthenticate, authorizeRoles("admin"), deleteMemberIdCard);
-membersIdRouter.patch("/toggle-status/:id", isAuthenticate, authorizeRoles("admin"), toggleIdCardStatus);
+// Admin only routes - Require authentication and admin role (also available to super_admin)
+membersIdRouter.post("/create", isAuthenticate, authorizeRoles("admin", "super_admin"), createMemberIdCard);
+membersIdRouter.put("/update/:id", isAuthenticate, authorizeRoles("admin", "super_admin"), updateMemberIdCard);
+membersIdRouter.delete("/deleteId/:id", isAuthenticate, authorizeRoles("admin", "super_admin"), deleteMemberIdCard);
+membersIdRouter.patch("/toggle-status/:id", isAuthenticate, authorizeRoles("admin", "super_admin"), toggleIdCardStatus);
 
 export default membersIdRouter;

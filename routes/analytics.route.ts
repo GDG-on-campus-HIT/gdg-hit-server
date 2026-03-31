@@ -7,14 +7,14 @@ const analyticsRoute = express.Router();
 analyticsRoute.get(
   "/getUserAnalytics",
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   getUserAnalytics
 );
 
 analyticsRoute.get(
     "/getRecruitmentAnalytics",
     isAuthenticate,
-    authorizeRoles("admin"),
+    authorizeRoles("admin", "super_admin"),
     getRecruitmentAnalytics
   );
 

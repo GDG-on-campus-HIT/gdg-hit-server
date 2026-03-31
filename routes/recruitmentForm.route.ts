@@ -17,38 +17,38 @@ const recruitmentBase = "/recruitment";
 // Public Route to get the active form (anyone can check if recruitment is open)
 recruitmentFormRouter.get(`${recruitmentBase}/active-form`, getActiveRecruitmentForm);
 
-// Admin Routes for Form Management
+// Admin Routes for Form Management (also available to super_admin)
 recruitmentFormRouter.post(
     `${recruitmentBase}/forms`,
     isAuthenticate,
-    authorizeRoles("admin"),
+    authorizeRoles("admin", "super_admin"),
     createRecruitmentForm
 );
 
 recruitmentFormRouter.get(
     `${recruitmentBase}/forms`,
     isAuthenticate,
-    authorizeRoles("admin"),
+    authorizeRoles("admin", "super_admin"),
     getAllRecruitmentForms
 );
 recruitmentFormRouter.get(
     `${recruitmentBase}/forms/:id`,
     isAuthenticate,
-    authorizeRoles("admin"),
+    authorizeRoles("admin", "super_admin"),
     getRecruitmentFormById
 );
 
 recruitmentFormRouter.put(
     `${recruitmentBase}/forms/:id`,
     isAuthenticate,
-    authorizeRoles("admin"),
+    authorizeRoles("admin", "super_admin"),
     updateRecruitmentForm
 );
 
 recruitmentFormRouter.delete(
     `${recruitmentBase}/forms/:id`,
     isAuthenticate,
-    authorizeRoles("admin"),
+    authorizeRoles("admin", "super_admin"),
     deleteRecruitmentForm
 );
 
@@ -56,7 +56,7 @@ recruitmentFormRouter.delete(
 recruitmentFormRouter.get(
     `${recruitmentBase}/stats`,
     isAuthenticate,
-    authorizeRoles("admin"),
+    authorizeRoles("admin", "super_admin"),
     getRecruitmentStats
 );
 

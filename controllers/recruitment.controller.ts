@@ -5,6 +5,7 @@ import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
 import { RecruitmentFormModel } from "../models/recruitmentForm.model";
 import userModel, { IUser } from "../models/user.model";
 import mongoose, { Document } from "mongoose";
+import { AdminActivityLogModel } from "../models/adminActivityLog.model";
 
 
 // Get all applications with filtering
@@ -208,8 +209,33 @@ export const updateApplicationStatus = CatchAsyncError(
         return next(new ErrorHandler("Application not found", 404));
       }
 
+      const oldStatus = application.status;
       application.status = status;
       await application.save();
+
+      // Log admin activity
+      if (req.user) {
+        const actionMap: Record<string, string> = {
+          shortlisted: "shortlist",
+          rejected: "reject",
+          accepted: "accept",
+          pending: "update_status",
+        };
+
+        await AdminActivityLogModel.create({
+          admin: req.user._id,
+          action: actionMap[status] || "update_status",
+          candidateId: id,
+          candidateName: application.generalInfo.fullName,
+          candidateEmail: application.generalInfo.email,
+          domain: application.generalInfo.positions.join(", "),
+          oldStatus,
+          newStatus: status,
+          description: `Updated application status from "${oldStatus}" to "${status}" for ${application.generalInfo.fullName}`,
+          ipAddress: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
+      }
 
       res.status(200).json({
         success: true,
@@ -536,6 +562,12 @@ export const updateRecruitmentData = CatchAsyncError(
         return next(new ErrorHandler("Invalid status value", 400));
       }
 
+      // Get the existing record to log the change
+      const existingRecruitment = await RecruitmentModel.findById(id);
+      if (!existingRecruitment) {
+        return next(new ErrorHandler("Recruitment record not found", 404));
+      }
+
       // Flatten the update data to use dot notation
       const flattenedUpdate = flattenUpdateData(updateData);
 
@@ -549,6 +581,30 @@ export const updateRecruitmentData = CatchAsyncError(
 
       if (!updatedRecruitment) {
         return next(new ErrorHandler("Recruitment record not found", 404));
+      }
+
+      // Log admin activity if status was changed
+      if (req.user && updateData.status && updateData.status !== existingRecruitment.status) {
+        const actionMap: Record<string, string> = {
+          shortlisted: "shortlist",
+          rejected: "reject",
+          accepted: "accept",
+          pending: "update_status",
+        };
+
+        await AdminActivityLogModel.create({
+          admin: req.user._id,
+          action: actionMap[updateData.status] || "update_status",
+          candidateId: id,
+          candidateName: existingRecruitment.generalInfo.fullName,
+          candidateEmail: existingRecruitment.generalInfo.email,
+          domain: existingRecruitment.generalInfo.positions.join(", "),
+          oldStatus: existingRecruitment.status,
+          newStatus: updateData.status,
+          description: `Updated application status from "${existingRecruitment.status}" to "${updateData.status}" for ${existingRecruitment.generalInfo.fullName}`,
+          ipAddress: req.ip,
+          userAgent: req.headers["user-agent"],
+        });
       }
 
       // Convert to plain object for response

@@ -1,0 +1,319 @@
+import { NextFunction, Request, Response } from "express";
+import { CatchAsyncError } from "../middleware/CatchAsyncError";
+import userModel, { IUser } from "../models/user.model";
+import ErrorHandler from "../utlis/ErrorHandler";
+import bcrypt from "bcryptjs";
+import { AdminActivityLogModel } from "../models/adminActivityLog.model";
+
+// Utility function to generate random password
+const generateRandomPassword = (length: number = 12): string => {
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const numbers = "0123456789";
+  const symbols = "!@#$%^&*";
+  const allChars = uppercase + lowercase + numbers + symbols;
+
+  let password = "";
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += symbols[Math.floor(Math.random() * symbols.length)];
+
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  return password.split("").sort(() => Math.random() - 0.5).join("");
+};
+
+// Get all admins
+export const getAllAdmins = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const admins = await userModel
+        .find({ role: { $in: ["admin", "super_admin"] } })
+        .select("-password")
+        .sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        admins,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Add new admin
+export const addAdmin = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, name, password } = req.body;
+
+      // Validation
+      if (!email || !name) {
+        return next(new ErrorHandler("Email and name are required", 400));
+      }
+
+      // Check if user already exists
+      const existingUser = await userModel.findOne({ email });
+      if (existingUser) {
+        return next(new ErrorHandler("User with this email already exists", 400));
+      }
+
+      // Auto-generate password if not provided
+      const adminPassword = password || generateRandomPassword();
+
+      // Create new admin user
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const newAdmin = await userModel.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: "admin",
+        isVerified: true, // Admins are automatically verified
+      });
+
+      // Log the action
+      await AdminActivityLogModel.create({
+        admin: req.user?._id,
+        action: "add_admin",
+        targetAdminId: newAdmin._id,
+        targetAdminEmail: email,
+        description: `Added new admin: ${name} (${email})`,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Admin added successfully",
+        admin: {
+          _id: newAdmin._id,
+          name: newAdmin.name,
+          email: newAdmin.email,
+          role: newAdmin.role,
+          password: adminPassword, // Return the generated/provided password
+        },
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Remove admin
+export const removeAdmin = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { adminId } = req.params;
+
+      // Validation
+      if (!adminId) {
+        return next(new ErrorHandler("Admin ID is required", 400));
+      }
+
+      const admin = await userModel.findById(adminId);
+      if (!admin) {
+        return next(new ErrorHandler("Admin not found", 404));
+      }
+
+      // Prevent removing super admin if super admin is not involved
+      if (admin.role === "super_admin" && req.user?.role !== "super_admin") {
+        return next(new ErrorHandler("You cannot remove a super admin", 403));
+      }
+
+      // Prevent super admin from removing themselves
+      if (admin._id.toString() === req.user?._id.toString()) {
+        return next(new ErrorHandler("You cannot remove yourself", 400));
+      }
+
+      const adminEmail = admin.email;
+      const adminName = admin.name;
+
+      // Remove the admin
+      await userModel.findByIdAndDelete(adminId);
+
+      // Log the action
+      await AdminActivityLogModel.create({
+        admin: req.user?._id,
+        action: "remove_admin",
+        targetAdminId: adminId,
+        targetAdminEmail: adminEmail,
+        description: `Removed admin: ${adminName} (${adminEmail})`,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Admin removed successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Get admin activity logs (Super admin only)
+export const getAdminActivityLogs = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { adminId, action, startDate, endDate, limit = 50, page = 1 } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const query: any = {};
+
+      // Filter by admin if specified
+      if (adminId) {
+        query.admin = adminId;
+      }
+
+      // Filter by action type if specified
+      if (action) {
+        query.action = action;
+      }
+
+      // Filter by date range if specified
+      if (startDate || endDate) {
+        query.timestamp = {};
+        if (startDate) {
+          query.timestamp.$gte = new Date(startDate as string);
+        }
+        if (endDate) {
+          query.timestamp.$lte = new Date(endDate as string);
+        }
+      }
+
+      const logs = await AdminActivityLogModel.find(query)
+        .populate("admin", "name email")
+        .populate("candidateId", "generalInfo")
+        .populate("targetAdminId", "name email")
+        .sort({ timestamp: -1 })
+        .limit(Number(limit))
+        .skip(skip);
+
+      const total = await AdminActivityLogModel.countDocuments(query);
+
+      res.status(200).json({
+        success: true,
+        logs,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          pages: Math.ceil(total / Number(limit)),
+        },
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Get activity log summary (Super admin only)
+export const getActivityLogSummary = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { startDate, endDate } = req.query;
+
+      const query: any = {};
+
+      // Filter by date range if specified
+      if (startDate || endDate) {
+        query.timestamp = {};
+        if (startDate) {
+          query.timestamp.$gte = new Date(startDate as string);
+        }
+        if (endDate) {
+          query.timestamp.$lte = new Date(endDate as string);
+        }
+      }
+
+      // Get action counts
+      const actionCounts = await AdminActivityLogModel.aggregate([
+        { $match: query },
+        { $group: { _id: "$action", count: { $sum: 1 } } },
+      ]);
+
+      // Get admin activity counts
+      const adminActivityCounts = await AdminActivityLogModel.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: "$admin",
+            count: { $sum: 1 },
+            shortlistCount: {
+              $sum: { $cond: [{ $eq: ["$action", "shortlist"] }, 1, 0] },
+            },
+            rejectCount: {
+              $sum: { $cond: [{ $eq: ["$action", "reject"] }, 1, 0] },
+            },
+            acceptCount: {
+              $sum: { $cond: [{ $eq: ["$action", "accept"] }, 1, 0] },
+            },
+          },
+        },
+        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "adminInfo" } },
+      ]);
+
+      const totalLogs = await AdminActivityLogModel.countDocuments(query);
+
+      res.status(200).json({
+        success: true,
+        summary: {
+          totalLogs,
+          actionCounts,
+          adminActivityCounts,
+        },
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Get specific admin's activity logs
+export const getSpecificAdminActivityLogs = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { adminId } = req.params;
+      const { limit = 50, page = 1 } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      // Verify admin exists
+      const admin = await userModel.findById(adminId);
+      if (!admin) {
+        return next(new ErrorHandler("Admin not found", 404));
+      }
+
+      const logs = await AdminActivityLogModel.find({ admin: adminId })
+        .populate("candidateId", "generalInfo")
+        .populate("targetAdminId", "name email")
+        .sort({ timestamp: -1 })
+        .limit(Number(limit))
+        .skip(skip);
+
+      const total = await AdminActivityLogModel.countDocuments({ admin: adminId });
+
+      res.status(200).json({
+        success: true,
+        admin: {
+          _id: admin._id,
+          name: admin.name,
+          email: admin.email,
+        },
+        logs,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          pages: Math.ceil(total / Number(limit)),
+        },
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
