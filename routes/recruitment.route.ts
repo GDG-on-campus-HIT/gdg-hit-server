@@ -26,7 +26,7 @@ recruitmentRouter.get(`${recruitmentBase}/active-form`, getActiveRecruitmentForm
 recruitmentRouter.get(
   `${recruitmentBase}/applications`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   getApplications
 );
 
@@ -37,38 +37,38 @@ recruitmentRouter.post(`${recruitmentBase}/recruitmentFormSubmission`, isAuthent
 recruitmentRouter.put(
   `${recruitmentBase}/applications/:id`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   updateApplicationStatus
 );
 recruitmentRouter.delete(
   `${recruitmentBase}/applications/:id`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   deleteApplication
 );
 recruitmentRouter.get(`${recruitmentBase}/isAlreadyRegistered`, isAuthenticate, checkUserRegistration);
 
 
 
-// admin only ---------------->
+// admin only (also super_admin) -------->
 recruitmentRouter.get(
   `${recruitmentBase}/getAllRecruitmentData`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   getAllRecruitmentData
 );
 
 recruitmentRouter.get(
   `${recruitmentBase}/searchRecruitmentData`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   searchRecruitmentData
 );
 
 recruitmentRouter.patch(
   `${recruitmentBase}/updateRecruitmentData/:id`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   updateRecruitmentData
 );
 
@@ -76,7 +76,7 @@ recruitmentRouter.patch(
 recruitmentRouter.get(
   `${recruitmentBase}/getAllUsersWithApplications`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   getAllUsersWithApplications
 );
 
@@ -86,7 +86,7 @@ recruitmentRouter.get(
 recruitmentRouter.get(
   `${recruitmentBase}/forms`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   getAllRecruitmentForms
 );
 
@@ -94,7 +94,7 @@ recruitmentRouter.get(
 recruitmentRouter.get(
   `${recruitmentBase}/forms/:formId`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   getRecruitmentForm
 );
 
@@ -102,7 +102,7 @@ recruitmentRouter.get(
 recruitmentRouter.patch(
   `${recruitmentBase}/forms/:formId/roles/:roleId/whatsapp`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   updateRoleWhatsappLink
 );
 
@@ -110,7 +110,7 @@ recruitmentRouter.patch(
 recruitmentRouter.patch(
   `${recruitmentBase}/forms/:formId/role-whatsapp`,
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   updateRoleWhatsappLinkByName
 );
 

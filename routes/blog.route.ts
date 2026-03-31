@@ -44,18 +44,18 @@ blogRouter.patch(
   softDeleteBlog
 );
 
-// ✅ Admin-only routes
+// ✅ Admin-only routes (also available to super_admin)
 blogRouter.get(
   "/admin/allBlogs",
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   getAllBlogsAdmin
 );
 
 blogRouter.patch(
   "/admin/unlistBlog/:id",
   isAuthenticate,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "super_admin"),
   adminSoftDeleteBlog
 );
 

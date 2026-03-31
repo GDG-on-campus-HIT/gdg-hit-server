@@ -9,19 +9,19 @@ const certificateRouter = express.Router();
 certificateRouter.get('/my-certificate',isAuthenticate, getMyCertificates);
 
 // Add a new certificate
-certificateRouter.post('/certificate',isAuthenticate, authorizeRoles("admin"),upload.single('certificate'), addCertificate);
+certificateRouter.post('/certificate',isAuthenticate, authorizeRoles("admin", "super_admin"),upload.single('certificate'), addCertificate);
 
 // Get all certificates
-certificateRouter.get('/certificate', isAuthenticate,authorizeRoles("admin"), getAllCertificates);
+certificateRouter.get('/certificate', isAuthenticate,authorizeRoles("admin", "super_admin"), getAllCertificates);
 
 // Get a specific certificate by ID
-certificateRouter.get('/certificate/:id', isAuthenticate,authorizeRoles("admin"), getCertificateById);
+certificateRouter.get('/certificate/:id', isAuthenticate,authorizeRoles("admin", "super_admin"), getCertificateById);
 
 // Update a certificate
-certificateRouter.put('/certificate',isAuthenticate, authorizeRoles("admin"),upload.single('certificate'), updateCertificate);
+certificateRouter.put('/certificate',isAuthenticate, authorizeRoles("admin", "super_admin"),upload.single('certificate'), updateCertificate);
 
 // Delete a certificate
-certificateRouter.delete('/certificate/:id', isAuthenticate,authorizeRoles("admin"), deleteCertificate);
+certificateRouter.delete('/certificate/:id', isAuthenticate,authorizeRoles("admin", "super_admin"), deleteCertificate);
 
 // Increase download count
 certificateRouter.put('/certificate-download-count/:certificateId', isAuthenticate, increaseDownloadCount);
