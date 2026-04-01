@@ -21,34 +21,34 @@ recruitmentFormRouter.get(`${recruitmentBase}/active-form`, getActiveRecruitment
 recruitmentFormRouter.post(
     `${recruitmentBase}/forms`,
     isAuthenticate,
-    authorizeRoles("admin", "super_admin"),
+    authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
     createRecruitmentForm
 );
 
 recruitmentFormRouter.get(
     `${recruitmentBase}/forms`,
     isAuthenticate,
-    authorizeRoles("admin", "super_admin"),
+    authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
     getAllRecruitmentForms
 );
 recruitmentFormRouter.get(
     `${recruitmentBase}/forms/:id`,
     isAuthenticate,
-    authorizeRoles("admin", "super_admin"),
+    authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
     getRecruitmentFormById
 );
 
 recruitmentFormRouter.put(
     `${recruitmentBase}/forms/:id`,
     isAuthenticate,
-    authorizeRoles("admin", "super_admin"),
+    authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
     updateRecruitmentForm
 );
 
 recruitmentFormRouter.delete(
     `${recruitmentBase}/forms/:id`,
     isAuthenticate,
-    authorizeRoles("admin", "super_admin"),
+    authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
     deleteRecruitmentForm
 );
 
@@ -56,7 +56,7 @@ recruitmentFormRouter.delete(
 recruitmentFormRouter.get(
     `${recruitmentBase}/stats`,
     isAuthenticate,
-    authorizeRoles("admin", "super_admin"),
+    authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
     getRecruitmentStats
 );
 

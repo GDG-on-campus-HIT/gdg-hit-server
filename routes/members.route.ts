@@ -17,7 +17,7 @@ const memberRouter = express.Router();
 memberRouter.get(
   "/members/admin/all",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   getAllMembersAdmin
 );
 
@@ -25,21 +25,21 @@ memberRouter.get(
 memberRouter.get(
   "/members/admin/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   getMemberByIdAdmin
 );
 
 memberRouter.post(
   "/members",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   addMember
 );
 
 memberRouter.put(
   "/members/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   updateMember
 );
 
@@ -47,7 +47,7 @@ memberRouter.put(
 memberRouter.patch(
   "/members/toggle-status/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   toggleMemberStatus
 );
 
@@ -55,7 +55,7 @@ memberRouter.patch(
 memberRouter.delete(
   "/members/hard-delete/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   deleteMember
 );
 

@@ -16,9 +16,9 @@ membersIdRouter.get("/all", getAllMemberIdCards);
 membersIdRouter.get("/:memberId", getMemberIdCard);
 
 // Admin only routes - Require authentication and admin role (also available to super_admin)
-membersIdRouter.post("/create", isAuthenticate, authorizeRoles("admin", "super_admin"), createMemberIdCard);
-membersIdRouter.put("/update/:id", isAuthenticate, authorizeRoles("admin", "super_admin"), updateMemberIdCard);
-membersIdRouter.delete("/deleteId/:id", isAuthenticate, authorizeRoles("admin", "super_admin"), deleteMemberIdCard);
-membersIdRouter.patch("/toggle-status/:id", isAuthenticate, authorizeRoles("admin", "super_admin"), toggleIdCardStatus);
+membersIdRouter.post("/create", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), createMemberIdCard);
+membersIdRouter.put("/update/:id", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), updateMemberIdCard);
+membersIdRouter.delete("/deleteId/:id", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), deleteMemberIdCard);
+membersIdRouter.patch("/toggle-status/:id", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), toggleIdCardStatus);
 
 export default membersIdRouter;

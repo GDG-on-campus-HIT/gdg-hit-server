@@ -1,36 +1,20 @@
+import crypto from "crypto";
 import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import userModel, { IUser } from "../models/user.model";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { AdminActivityLogModel } from "../models/adminActivityLog.model";
 
-// Utility function to generate random password
-const generateRandomPassword = (length: number = 12): string => {
-  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const lowercase = "abcdefghijklmnopqrstuvwxyz";
-  const numbers = "0123456789";
-  const symbols = "!@#$%^&*";
-  const allChars = uppercase + lowercase + numbers + symbols;
-
-  let password = "";
-  password += uppercase[Math.floor(Math.random() * uppercase.length)];
-  password += lowercase[Math.floor(Math.random() * lowercase.length)];
-  password += numbers[Math.floor(Math.random() * numbers.length)];
-  password += symbols[Math.floor(Math.random() * symbols.length)];
-
-  for (let i = password.length; i < length; i++) {
-    password += allChars[Math.floor(Math.random() * allChars.length)];
-  }
-
-  return password.split("").sort(() => Math.random() - 0.5).join("");
-};
-
 // Get all admins
 export const getAllAdmins = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const admins = await userModel
-        .find({ role: { $in: ["admin", "super_admin"] } })
+        .find({ 
+          role: { 
+            $in: ["super_admin", "domain_lead", "super_domain_admin"] 
+          } 
+        })
         .select("-password")
         .sort({ createdAt: -1 });
 
@@ -48,12 +32,31 @@ export const getAllAdmins = CatchAsyncError(
 export const addAdmin = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, name, password } = req.body;
+      const { email, name, password, role, assignedDomains } = req.body;
 
-      // Validation
       if (!email || !name) {
         return next(new ErrorHandler("Email and name are required", 400));
       }
+
+      const resolvedRole = (role || "domain_lead") as string;
+      const domains: string[] = Array.isArray(assignedDomains) ? assignedDomains : [];
+
+      if (
+        (resolvedRole === "domain_lead") &&
+        domains.length === 0
+      ) {
+        return next(
+          new ErrorHandler(
+            "At least one assigned domain is required for Domain Lead role",
+            400
+          )
+        );
+      }
+
+      let finalPassword =
+        typeof password === "string" && password.trim().length >= 6
+          ? password.trim()
+          : crypto.randomBytes(18).toString("base64url").slice(0, 22);
 
       // Check if user already exists
       const existingUser = await userModel.findOne({ email });
@@ -61,29 +64,26 @@ export const addAdmin = CatchAsyncError(
         return next(new ErrorHandler("User with this email already exists", 400));
       }
 
-      // Auto-generate password if not provided
-      const adminPassword = password || generateRandomPassword();
-
-      // Create new admin user. Password must remain plain here because
-      // the user model pre-save hook already hashes it.
+      // Create new admin user
       const newAdmin = await userModel.create({
         name,
         email,
-        password: adminPassword,
-        role: "admin",
-        isVerified: true, // Admins are automatically verified
+        password: finalPassword,
+        role: resolvedRole,
+        assignedDomains: domains,
+        isVerified: true,
       });
 
-      // Log the action
-      await AdminActivityLogModel.create({
-        admin: req.user?._id,
+      // Log the action (Non-blocking to improve performance)
+      AdminActivityLogModel.create({
+        admin: (req.user as any)?._id,
         action: "add_admin",
         targetAdminId: newAdmin._id,
         targetAdminEmail: email,
         description: `Added new admin: ${name} (${email})`,
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
-      });
+      }).catch(err => console.error("Error creating activity log:", err));
 
       res.status(201).json({
         success: true,
@@ -93,8 +93,73 @@ export const addAdmin = CatchAsyncError(
           name: newAdmin.name,
           email: newAdmin.email,
           role: newAdmin.role,
-          password: adminPassword, // Return the generated/provided password
+          assignedDomains: newAdmin.assignedDomains,
+          password: finalPassword,
         },
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Update admin role and domains
+export const updateAdminRole = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { adminId, role, assignedDomains } = req.body;
+
+      if (!adminId) {
+        return next(new ErrorHandler("Admin ID is required", 400));
+      }
+
+      const admin = await userModel.findById(adminId);
+      if (!admin) {
+        return next(new ErrorHandler("Admin not found", 404));
+      }
+
+      // Prevent modifying super admin if not authorized
+      if (admin.role === "super_admin" && req.user?.role !== "super_admin") {
+        return next(new ErrorHandler("You cannot modify a super admin", 403));
+      }
+
+      const oldRole = admin.role;
+      const oldDomains = admin.assignedDomains;
+
+      if (role) admin.role = role;
+      if (assignedDomains !== undefined) admin.assignedDomains = assignedDomains;
+
+      const effectiveRole = admin.role;
+      const effectiveDomains = admin.assignedDomains || [];
+      if (
+        (effectiveRole === "domain_lead") &&
+        effectiveDomains.length === 0
+      ) {
+        return next(
+          new ErrorHandler(
+            "Domain Lead must have at least one assigned domain",
+            400
+          )
+        );
+      }
+
+      await admin.save();
+
+      // Log the action (Non-blocking to improve performance)
+      AdminActivityLogModel.create({
+        admin: (req.user as any)?._id,
+        action: "update_status",
+        targetAdminId: adminId,
+        targetAdminEmail: admin.email,
+        description: `Updated admin ${admin.email}: role (${oldRole} -> ${admin.role}), domains ([${oldDomains}] -> [${admin.assignedDomains}])`,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      }).catch(err => console.error("Error creating activity log:", err));
+
+      res.status(200).json({
+        success: true,
+        message: "Admin updated successfully",
+        admin,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
@@ -124,7 +189,7 @@ export const removeAdmin = CatchAsyncError(
       }
 
       // Prevent super admin from removing themselves
-      if (admin._id.toString() === req.user?._id.toString()) {
+      if ((admin as any)._id.toString() === (req.user as any)?._id.toString()) {
         return next(new ErrorHandler("You cannot remove yourself", 400));
       }
 
@@ -134,16 +199,16 @@ export const removeAdmin = CatchAsyncError(
       // Remove the admin
       await userModel.findByIdAndDelete(adminId);
 
-      // Log the action
-      await AdminActivityLogModel.create({
-        admin: req.user?._id,
+      // Log the action (Non-blocking to improve performance)
+      AdminActivityLogModel.create({
+        admin: (req.user as any)?._id,
         action: "remove_admin",
         targetAdminId: adminId,
         targetAdminEmail: adminEmail,
         description: `Removed admin: ${adminName} (${adminEmail})`,
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
-      });
+      }).catch(err => console.error("Error creating activity log:", err));
 
       res.status(200).json({
         success: true,

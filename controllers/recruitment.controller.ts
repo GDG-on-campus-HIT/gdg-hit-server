@@ -17,7 +17,18 @@ export const getApplications = CatchAsyncError(
 
       if (status) query.status = status;
       if (branch) query["generalInfo.branch"] = branch;
-      if (positions) query["generalInfo.positions"] = { $in: [positions] };
+
+      const domainRestriction = req.query.domainRestriction as string[] | undefined;
+
+      if (domainRestriction && domainRestriction.length > 0) {
+        if (positions) {
+          query["generalInfo.positions"] = { $in: [positions] };
+        } else {
+          query["generalInfo.positions"] = { $in: domainRestriction };
+        }
+      } else if (positions) {
+        query["generalInfo.positions"] = { $in: [positions] };
+      }
 
       const applications = await RecruitmentModel.find(query).sort({
         createdAt: -1,
@@ -355,10 +366,21 @@ export const getAllRecruitmentData = CatchAsyncError(
         status,
         position,
         formId,
+        q,
       } = req.query;
 
       // Build query object for filtering
       const query: any = {};
+
+      if (q) {
+        const searchRegex = new RegExp(q as string, "i");
+        query.$or = [
+          { "generalInfo.fullName": searchRegex },
+          { "generalInfo.email": searchRegex },
+          { "generalInfo.rollNumber": searchRegex },
+          { "generalInfo.phoneNumber": searchRegex },
+        ];
+      }
 
       if (formId) {
         query.formId = formId;
@@ -372,8 +394,16 @@ export const getAllRecruitmentData = CatchAsyncError(
       if (status) {
         query.status = status;
       }
-      if (position) {
-        query["generalInfo.positions"] = { $in: [position] }; // Match any document where position is in the positions array
+      const domainRestriction = req.query.domainRestriction as string[] | undefined;
+
+      if (domainRestriction && domainRestriction.length > 0) {
+        if (position) {
+          query["generalInfo.positions"] = { $in: [position] };
+        } else {
+          query["generalInfo.positions"] = { $in: domainRestriction };
+        }
+      } else if (position) {
+        query["generalInfo.positions"] = { $in: [position] };
       }
 
       // Convert page and limit to numbers
@@ -396,11 +426,22 @@ export const getAllRecruitmentData = CatchAsyncError(
       const hasPrevPage = pageNum > 1;
 
       let positionStats: any[] = [];
-      if (req.query.includeStats === 'true' && formId) {
+      if (req.query.includeStats === "true" && formId) {
+        // Build stats match from the same filters as the main query
+        const statsMatch: Record<string, unknown> = { ...query };
+        
+        // Ensure formId is an ObjectId for aggregation
+        if (statsMatch.formId) {
+          statsMatch.formId = new mongoose.Types.ObjectId(statsMatch.formId as string);
+        }
+        
         positionStats = await RecruitmentModel.aggregate([
-          { $match: { formId: new mongoose.Types.ObjectId(formId as string) } },
+          { $match: statsMatch },
           { $unwind: "$generalInfo.positions" },
-          { $group: { _id: "$generalInfo.positions", count: { $sum: 1 } } }
+          ...(domainRestriction && domainRestriction.length > 0
+            ? [{ $match: { "generalInfo.positions": { $in: domainRestriction } } }]
+            : []),
+          { $group: { _id: "$generalInfo.positions", count: { $sum: 1 } } },
         ]);
       }
 
@@ -445,8 +486,18 @@ export const searchRecruitmentData = CatchAsyncError(
       // Additional filters
       if (branch) query["generalInfo.branch"] = branch;
       if (year) query["generalInfo.branchYear"] = year;
-      if (position) query["generalInfo.positions"] = { $in: [position] };
-      if (status) query.status = status; // Add status filter
+      if (status) query.status = status;
+
+      const domainRestriction = req.query.domainRestriction as string[] | undefined;
+      if (domainRestriction && domainRestriction.length > 0) {
+        if (position) {
+          query["generalInfo.positions"] = { $in: [position] };
+        } else {
+          query["generalInfo.positions"] = { $in: domainRestriction };
+        }
+      } else if (position) {
+        query["generalInfo.positions"] = { $in: [position] };
+      }
 
       const pageNum = parseInt(page as string, 10);
       const limitNum = parseInt(limit as string, 10);

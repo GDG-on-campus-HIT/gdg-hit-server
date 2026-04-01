@@ -15,6 +15,7 @@ export interface IUser extends Document {
   department: string;
   whatsappNo: number;
   isVerified: boolean;
+  assignedDomains: string[];
   resetPasswordToken?: string;
   linkedinProfile?: string;
   githubProfile?: string;
@@ -40,10 +41,11 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
         message: "please enter a valid email",
       },
       unique: true,
+      lowercase: true,
     },
     password: {
       type: String,
-      required: [true, "please enter your email"],
+      required: [true, "please enter your password"],
       minlength: [6, "password must be at least 6 characters"],
       select: false,
     },
@@ -67,16 +69,25 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    assignedDomains: {
+      type: [String],
+      default: [],
+    },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
   },
   { timestamps: true }
 );
 
+// Create indexes for faster queries
+userSchema.index({ role: 1 });
+userSchema.index({ createdAt: -1 });
+userSchema.index({ email: 1 }); // Email is unique but explicitly indexing helps clarify
+
 //Hash password before saving
 userSchema.pre<IUser>("save", async function (next) {
   if (!this.isModified("password")) {
-    next();
+    return next();
   }
   this.password = await bcrypt.hash(this.password, 10);
   next();

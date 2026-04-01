@@ -155,12 +155,14 @@ export const loginUser = CatchAsyncError(
     const { email, password, role } = req.body as ILoginRequest;
 
     if (!email || !password) {
+      console.log("❌ Login Attempt Failed: Missing credentials");
       return next(new ErrorHandler("Please enter the email and password", 400));
     }
 
     const user = await userModel.findOne({ email }).select("+password");
 
     if (!user) {
+      console.log(`❌ Login Attempt Failed: User with email ${email} not found`);
       return next(
         new ErrorHandler("Please enter valid email and password", 400)
       );
@@ -169,11 +171,13 @@ export const loginUser = CatchAsyncError(
     const isPasswordMatched = await user.comparePassword(password);
 
     if (!isPasswordMatched) {
+      console.log(`❌ Login Attempt Failed: Password mismatch for email ${email}`);
       return next(
         new ErrorHandler("Please enter valid email and password", 400)
       );
     }
 
+    console.log(`✅ Login Successful: ${email} (${user.role})`);
     user.password = "";
 
     sendToken(user, 200, res);

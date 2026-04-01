@@ -2,7 +2,6 @@ import { isAuthenticate } from './../middleware/auth';
 import express from 'express';
 import { activateUser, getUserInfo, loginUser, logoutUser, registrationUser, resetPassword, sendPasswordResetEmail, updateAccessToken, updatePassword, updateUserInfo } from '../controllers/user.controller';
 
-
 const userRouter = express.Router();
 
 userRouter.post('/registration', registrationUser);
@@ -25,5 +24,6 @@ userRouter.post("/reset-password-link", sendPasswordResetEmail);
 
 userRouter.post("/reset-password/:id/:token", resetPassword);
 
+// superadmin routes removed (moved to app.ts)
 
 export default userRouter;

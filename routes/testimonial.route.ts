@@ -8,10 +8,10 @@ const testimonialRouter = express.Router();
 testimonialRouter.post('/testimonial', addTestimonial);
 
 // Update a testimonial by ID
-testimonialRouter.put('/testimonial/:id', isAuthenticate, authorizeRoles("admin", "super_admin"), updateTestimonial);
+testimonialRouter.put('/testimonial/:id', isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), updateTestimonial);
 
 // Delete a testimonial by ID
-testimonialRouter.delete('/testimonial/:id', isAuthenticate, authorizeRoles("admin", "super_admin"), deleteTestimonial);
+testimonialRouter.delete('/testimonial/:id', isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), deleteTestimonial);
 
 // Get all testimonials
 testimonialRouter.get('/testimonial', getTestimonials);

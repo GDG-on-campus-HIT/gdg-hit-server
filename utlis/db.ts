@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 require('dotenv').config();
 
+// Avoid hung requests when DB is slow or unreachable (must run before any model operation)
+mongoose.set("bufferTimeoutMS", 15_000);
+
 const dbUrl:string = process.env.DB_URL || '';
 
 const connectDB = async () =>{
