@@ -3,7 +3,7 @@ import Jwt, { JwtPayload } from "jsonwebtoken";
 import { redis } from "../utlis/redis";
 import { CatchAsyncError } from "./CatchAsyncError";
 import { NextFunction, Request, Response } from "express";
-
+import userModel from "../models/user.model";
 
 // authenticated user
 export const isAuthenticate = CatchAsyncError(
@@ -15,31 +15,40 @@ export const isAuthenticate = CatchAsyncError(
     }
 
     if (!access_token) {
-      console.log("Auth failed: No access token provided");
       return next(new ErrorHandler("Please login to access the resource", 400));
     }
 
-    const decoded = Jwt.verify(
-      access_token,
-      process.env.ACCESS_TOKEN as string
-    ) as JwtPayload;
+    try {
+      const decoded = Jwt.verify(
+        access_token,
+        process.env.ACCESS_TOKEN as string
+      ) as JwtPayload;
 
-    if (!decoded) {
-      console.log("Auth failed: Token verification failed");
-      return next(new ErrorHandler("access token is not valid", 400));
+      if (!decoded) {
+        return next(new ErrorHandler("Access token is not valid", 400));
+      }
+
+      // Try to get user from Redis cache first
+      let user = await redis.get(decoded.id).catch(() => null);
+
+      if (user) {
+        req.user = JSON.parse(user);
+      } else {
+        // Fallback to database if Redis fails or user is not in cache
+        const dbUser = await userModel.findById(decoded.id);
+        if (!dbUser) {
+          return next(new ErrorHandler("User not found", 404));
+        }
+        req.user = dbUser;
+      }
+
+      next();
+    } catch (error) {
+      return next(new ErrorHandler("Access token is not valid", 400));
     }
-
-    const user = await redis.get(decoded.id);
-
-    if (!user) {
-      console.log(`Auth failed: User not found in Redis for id ${decoded.id}`);
-      return next(new ErrorHandler("user not found", 400));
-    }
-
-    req.user = JSON.parse(user);
-    next();
   }
 );
+
 
 
 export const authorizeRoles = (...roles: string[]) => {
