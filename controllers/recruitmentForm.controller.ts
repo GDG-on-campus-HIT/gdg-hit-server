@@ -48,12 +48,49 @@ export const getAllRecruitmentForms = CatchAsyncError(
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             console.log("📋 getAllRecruitmentForms called");
+            
+            // Fetch forms first
             const forms = await RecruitmentFormModel.find().sort({ createdAt: -1 });
-            console.log(`✅ Found ${forms.length} forms`);
+            
+            // Map each form to include its application count
+            const formsWithCounts = await Promise.all(
+                forms.map(async (form) => {
+                    // Try to count with multi-format formId match for robustness
+                    let applicantCount = await RecruitmentModel.countDocuments({ 
+                        $or: [
+                            { formId: (form as any)._id },
+                            { formId: (form as any)._id.toString() }
+                        ]
+                    });
+                    
+                    // Fallback: If this is the active form and count is 0, 
+                    // check if there are any applications submitted WITHOUT a formId (legacy data)
+                    if (applicantCount === 0 && form.isActive) {
+                        const legacyCount = await RecruitmentModel.countDocuments({
+                            $or: [
+                                { formId: { $exists: false } },
+                                { formId: null }
+                            ]
+                        });
+                        
+                        if (legacyCount > 0) {
+                            applicantCount = legacyCount;
+                            console.log(`⚠️ Mapping ${legacyCount} legacy applications to active form: ${form.title}`);
+                        }
+                    }
+                    
+                    return {
+                        ...form.toObject(),
+                        applicantCount
+                    };
+                })
+            );
+
+            console.log(`✅ Found ${formsWithCounts.length} forms with counts`);
 
             res.status(200).json({
                 success: true,
-                forms
+                forms: formsWithCounts
             });
         } catch (error: any) {
             console.log("❌ getAllRecruitmentForms error:", error.message);
