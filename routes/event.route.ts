@@ -38,13 +38,13 @@ eventRouter.get("/events", getEvents);
 eventRouter.get("/events/:id", getEventById);
 
 // Create a new event
-eventRouter.post("/events", isAuthenticate, authorizeRoles("admin", "super_admin"), addEvent);
+eventRouter.post("/events", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), addEvent);
 
 // Update an existing event
 eventRouter.put(
   "/events/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   updateEvent
 );
 
@@ -52,7 +52,7 @@ eventRouter.put(
 eventRouter.delete(
   "/events/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   deleteEvent
 );
 
@@ -60,7 +60,7 @@ eventRouter.delete(
 eventRouter.get(
   "/events/:eventId/registrations",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   getEventRegistrations
 );
 
@@ -68,14 +68,14 @@ eventRouter.get(
 eventRouter.post(
   "/event-gallery/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   uploadGalleryForEvent
 );
 
 eventRouter.put(
   "/event-gallery/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   updateGalleryForEvent
 );
 
@@ -83,7 +83,7 @@ eventRouter.put(
 eventRouter.get(
   "/all-event-registrations",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   getAllRegistrations
 );
 
@@ -91,7 +91,7 @@ eventRouter.get(
 eventRouter.get(
   "/event-registrations",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   getRegistrations
 );
 
@@ -109,7 +109,7 @@ eventRouter.get(
 eventRouter.get(
   "/event-registrations/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   getRegistrationById
 );
 
@@ -117,7 +117,7 @@ eventRouter.get(
 eventRouter.put(
   "/event-registrations/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   updateRegistration
 );
 
@@ -125,7 +125,7 @@ eventRouter.put(
 eventRouter.delete(
   "/event-registrations/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   deleteRegistration
 );
 
@@ -133,13 +133,13 @@ eventRouter.delete(
 eventRouter.get("/faqs", getFAQs);
 
 // Create a new FAQ
-eventRouter.post("/faqs", isAuthenticate, authorizeRoles("admin", "super_admin"), addFAQ);
+eventRouter.post("/faqs", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), addFAQ);
 
 // Update an existing FAQ
 eventRouter.put(
   "/faqs/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   updateFAQ
 );
 
@@ -147,7 +147,7 @@ eventRouter.put(
 eventRouter.delete(
   "/faqs/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   deleteFAQ
 );
 
@@ -175,7 +175,7 @@ eventRouter.get("/events/:eventId/contact", getEventContactInfo);
 eventRouter.put(
   "/events/:eventId/contact",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   updateEventContactInfo
 );
 
@@ -184,7 +184,7 @@ eventRouter.put(
 eventRouter.post(
   "/events/:eventId/whatsapp",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   setEventWhatsappLink
 );
 

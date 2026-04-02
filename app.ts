@@ -1,5 +1,8 @@
 require("dotenv").config();
 
+// Load before routes/models so Mongoose buffer timeout applies to all operations
+import "./utlis/db";
+
 import express, { NextFunction, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -19,7 +22,6 @@ import contactRouter from "./routes/contact.route";
 import certificateRouter from "./routes/certificate.route";
 import templateRouter from "./routes/template.route";
 import adminRoute from "./routes/admin.route";
-import superadminRouter from "./routes/superadmin.route";
 import mailRoute from "./routes/mail.route";
 import analyticsRoute from "./routes/analytics.route";
 import recruitmentRouter from "./routes/recruitment.route";
@@ -29,6 +31,7 @@ import eventRegistration from "./routes/eventregistration.route";
 import quizRoute from "./routes/quiz.route";
 import formRouter from "./routes/form.route";
 import recruitmentFormRouter from "./routes/recruitmentForm.route";
+import { registerSuperadminRoutes } from "./routes/superadmin.route";
 
 export const app = express();
 
@@ -103,6 +106,8 @@ app.use(limiter);
 
 /* ---------------------------- ROUTES ---------------------------- */
 
+registerSuperadminRoutes(app);
+
 app.use("/api/v1", userRouter);
 app.use("/api/v1", memberRouter);
 app.use("/api/v1", eventRouter);
@@ -111,7 +116,6 @@ app.use("/api/v1", contactRouter);
 app.use("/api/v1", certificateRouter);
 app.use("/api/v1", templateRouter);
 app.use("/api/v1", adminRoute);
-app.use("/api/v1/superadmin", superadminRouter);
 app.use("/api/v1", mailRoute);
 app.use("/api/v1", analyticsRoute);
 app.use("/api/v1", recruitmentRouter);
