@@ -1,21 +1,60 @@
 import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
-import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
+import { IDomainStatus, IRecruitment, RecruitmentModel, RecruitmentStatus } from "../models/recruitment.model";
 import { RecruitmentFormModel } from "../models/recruitmentForm.model";
 import userModel, { IUser } from "../models/user.model";
 import mongoose, { Document } from "mongoose";
 import { AdminActivityLogModel } from "../models/adminActivityLog.model";
+
+const VALID_STATUSES: RecruitmentStatus[] = ["pending", "shortlisted", "rejected", "accepted"];
+
+const isValidStatus = (value: string): value is RecruitmentStatus => {
+  return VALID_STATUSES.includes(value as RecruitmentStatus);
+};
+
+const normalizeDomain = (domain: string): string => domain.trim().toLowerCase();
+
+const computeOverallStatus = (statuses: RecruitmentStatus[]): RecruitmentStatus => {
+  if (statuses.length === 0) return "pending";
+  if (statuses.every((status) => status === "accepted")) return "accepted";
+  if (statuses.every((status) => status === "rejected")) return "rejected";
+  if (statuses.some((status) => status === "shortlisted" || status === "accepted")) {
+    return "shortlisted";
+  }
+  return "pending";
+};
+
+const buildDefaultDomainStatuses = (
+  positions: string[],
+  userId?: mongoose.Types.ObjectId
+): IDomainStatus[] => {
+  return positions.map((position) => ({
+    domain: position,
+    status: "pending",
+    updatedBy: userId,
+    updatedAt: new Date(),
+  }));
+};
 
 
 // Get all applications with filtering
 export const getApplications = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { status, branch, positions } = req.query;
+      const { status, branch, positions, domain } = req.query;
       const query: any = {};
 
-      if (status) query.status = status;
+      if (status && domain) {
+        query.domainStatuses = {
+          $elemMatch: {
+            domain: domain,
+            status: status,
+          },
+        };
+      } else if (status) {
+        query.status = status;
+      }
       if (branch) query["generalInfo.branch"] = branch;
 
       const domainRestriction = req.query.domainRestriction as string[] | undefined;
@@ -178,6 +217,7 @@ export const submitApplication = CatchAsyncError(
         finalInfo,
         whatsappGroupLinks,
         status: "pending",
+        domainStatuses: buildDefaultDomainStatuses(generalInfo.positions, user._id),
       });
 
       // console.log("Application created successfully:", application);
@@ -208,11 +248,14 @@ export const updateApplicationStatus = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
+      const { status, domain, remarks } = req.body;
 
-      const validStatuses = ["pending", "shortlisted", "rejected", "accepted"];
-      if (!validStatuses.includes(status)) {
+      if (!isValidStatus(status)) {
         return next(new ErrorHandler("Invalid status", 400));
+      }
+
+      if (!domain || typeof domain !== "string") {
+        return next(new ErrorHandler("Domain is required to update status", 400));
       }
 
       const application = await RecruitmentModel.findById(id);
@@ -220,8 +263,49 @@ export const updateApplicationStatus = CatchAsyncError(
         return next(new ErrorHandler("Application not found", 404));
       }
 
-      const oldStatus = application.status;
-      application.status = status;
+      const matchedDomain = application.generalInfo.positions.find(
+        (position) => normalizeDomain(position) === normalizeDomain(domain)
+      );
+
+      if (!matchedDomain) {
+        return next(new ErrorHandler("Candidate has not applied for the provided domain", 400));
+      }
+
+      if (!Array.isArray(application.domainStatuses) || application.domainStatuses.length === 0) {
+        application.domainStatuses = buildDefaultDomainStatuses(application.generalInfo.positions);
+      }
+
+      let domainStatusRecord = application.domainStatuses.find(
+        (item) => normalizeDomain(item.domain) === normalizeDomain(matchedDomain)
+      );
+
+      if (!domainStatusRecord) {
+        application.domainStatuses.push({
+          domain: matchedDomain,
+          status: "pending",
+          updatedAt: new Date(),
+        });
+        domainStatusRecord = application.domainStatuses[application.domainStatuses.length - 1];
+      }
+
+      const oldDomainStatus = domainStatusRecord.status;
+      const oldOverallStatus = application.status;
+
+      domainStatusRecord.status = status;
+      domainStatusRecord.updatedBy = req.user?._id as any;
+      domainStatusRecord.updatedAt = new Date();
+      if (typeof remarks === "string") {
+        domainStatusRecord.remarks = remarks;
+      }
+
+      const statusByDomain = application.generalInfo.positions.map((position) => {
+        const existing = application.domainStatuses.find(
+          (item) => normalizeDomain(item.domain) === normalizeDomain(position)
+        );
+        return (existing?.status || "pending") as RecruitmentStatus;
+      });
+
+      application.status = computeOverallStatus(statusByDomain);
       await application.save();
 
       // Log admin activity
@@ -239,10 +323,10 @@ export const updateApplicationStatus = CatchAsyncError(
           candidateId: id,
           candidateName: application.generalInfo.fullName,
           candidateEmail: application.generalInfo.email,
-          domain: application.generalInfo.positions.join(", "),
-          oldStatus,
+          domain: matchedDomain,
+          oldStatus: oldDomainStatus,
           newStatus: status,
-          description: `Updated application status from "${oldStatus}" to "${status}" for ${application.generalInfo.fullName}`,
+          description: `Updated ${matchedDomain} status from "${oldDomainStatus}" to "${status}" for ${application.generalInfo.fullName}. Overall: "${oldOverallStatus}" -> "${application.status}"`,
           ipAddress: req.ip,
           userAgent: req.headers["user-agent"],
         });
@@ -342,6 +426,7 @@ export const checkUserRegistration = CatchAsyncError(
           ? {
             id: existingApplication._id,
             status: existingApplication.status,
+            domainStatuses: existingApplication.domainStatuses || [],
             positions: existingApplication.generalInfo.positions,
             whatsappGroupLinks, // WhatsApp links for selected positions
           }
@@ -392,7 +477,16 @@ export const getAllRecruitmentData = CatchAsyncError(
         query["generalInfo.branchYear"] = year;
       }
       if (status) {
-        query.status = status;
+        if (position) {
+          query.domainStatuses = {
+            $elemMatch: {
+              domain: position,
+              status,
+            },
+          };
+        } else {
+          query.status = status;
+        }
       }
       const domainRestriction = req.query.domainRestriction as string[] | undefined;
 
@@ -486,7 +580,16 @@ export const searchRecruitmentData = CatchAsyncError(
       // Additional filters
       if (branch) query["generalInfo.branch"] = branch;
       if (year) query["generalInfo.branchYear"] = year;
-      if (status) query.status = status;
+      if (status && position) {
+        query.domainStatuses = {
+          $elemMatch: {
+            domain: position,
+            status,
+          },
+        };
+      } else if (status) {
+        query.status = status;
+      }
 
       const domainRestriction = req.query.domainRestriction as string[] | undefined;
       if (domainRestriction && domainRestriction.length > 0) {
@@ -606,9 +709,7 @@ export const updateRecruitmentData = CatchAsyncError(
       // Validate status if provided
       if (
         updateData.status &&
-        !["pending", "shortlisted", "rejected", "accepted"].includes(
-          updateData.status
-        )
+        !isValidStatus(updateData.status)
       ) {
         return next(new ErrorHandler("Invalid status value", 400));
       }
