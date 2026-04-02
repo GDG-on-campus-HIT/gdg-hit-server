@@ -251,9 +251,9 @@ export const getAdminActivityLogs = CatchAsyncError(
       }
 
       const logs = await AdminActivityLogModel.find(query)
-        .populate("admin", "name email")
+        .populate("admin", "name email role")
         .populate("candidateId", "generalInfo")
-        .populate("targetAdminId", "name email")
+        .populate("targetAdminId", "name email role")
         .sort({ timestamp: -1 })
         .limit(Number(limit))
         .skip(skip);
@@ -353,8 +353,9 @@ export const getSpecificAdminActivityLogs = CatchAsyncError(
       }
 
       const logs = await AdminActivityLogModel.find({ admin: adminId })
+        .populate("admin", "name email role")
         .populate("candidateId", "generalInfo")
-        .populate("targetAdminId", "name email")
+        .populate("targetAdminId", "name email role")
         .sort({ timestamp: -1 })
         .limit(Number(limit))
         .skip(skip);

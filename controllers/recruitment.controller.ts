@@ -828,15 +828,49 @@ export const getRecruitmentForm = CatchAsyncError(
   }
 );
 
-// Admin: Get all recruitment forms
+// Admin: Get all recruitment forms with applicant counts
 export const getAllRecruitmentForms = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Fetch forms first
       const forms = await RecruitmentFormModel.find().sort({ createdAt: -1 });
+
+      // Map each form to include its application count
+      const formsWithCounts = await Promise.all(
+        forms.map(async (form) => {
+          // Count with multi-format formId match for robustness
+          let applicantCount = await RecruitmentModel.countDocuments({
+            $or: [
+              { formId: (form as any)._id },
+              { formId: (form as any)._id.toString() }
+            ]
+          });
+
+          // Fallback: If this is the active form and count is 0,
+          // check if there are any applications submitted WITHOUT a formId (legacy data)
+          if (applicantCount === 0 && form.isActive) {
+            const legacyCount = await RecruitmentModel.countDocuments({
+              $or: [
+                { formId: { $exists: false } },
+                { formId: null }
+              ]
+            });
+
+            if (legacyCount > 0) {
+              applicantCount = legacyCount;
+            }
+          }
+
+          return {
+            ...form.toObject(),
+            applicantCount
+          };
+        })
+      );
 
       res.status(200).json({
         success: true,
-        forms,
+        forms: formsWithCounts,
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
