@@ -107,9 +107,32 @@ export const getRecruitmentFormById = CatchAsyncError(
             if (!form) {
                 return next(new ErrorHandler("Form not found", 404));
             }
+
+            // Get applicant count for this specific form
+            let applicantCount = await RecruitmentModel.countDocuments({
+                $or: [
+                    { formId: (form as any)._id },
+                    { formId: (form as any)._id.toString() }
+                ]
+            });
+
+            // Fallback for legacy data if this is active
+            if (applicantCount === 0 && form.isActive) {
+                const legacyCount = await RecruitmentModel.countDocuments({
+                    $or: [
+                        { formId: { $exists: false } },
+                        { formId: null }
+                    ]
+                });
+                if (legacyCount > 0) applicantCount = legacyCount;
+            }
+
             res.status(200).json({
                 success: true,
-                form
+                form: {
+                    ...form.toObject(),
+                    applicantCount
+                }
             });
         } catch (error: any) {
             return next(new ErrorHandler(error.message, 500));
