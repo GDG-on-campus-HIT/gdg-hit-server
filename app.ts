@@ -65,6 +65,7 @@ const allowedOrigins = [
   "https://blog.gdghit.site",
   "https://my-admin-panel-livid.vercel.app",
   "https://gdghit.dev",
+  "https://www.gdghit.dev",
   "https://admin.gdghit.dev",
   "https://blog.gdghit.dev"
 ];
