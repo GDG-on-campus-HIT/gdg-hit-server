@@ -74,6 +74,16 @@ interface IFinalInfo {
   previousClubs?: string;
 }
 
+export type RecruitmentStatus = "pending" | "shortlisted" | "rejected" | "accepted";
+
+export interface IDomainStatus {
+  domain: string;
+  status: RecruitmentStatus;
+  updatedBy?: mongoose.Types.ObjectId;
+  updatedAt?: Date;
+  remarks?: string;
+}
+
 // Main Recruitment Interface
 export interface IRecruitment extends Document {
   user: mongoose.Schema.Types.ObjectId;
@@ -88,7 +98,8 @@ export interface IRecruitment extends Document {
   // WhatsApp Group Links for selected domains
   whatsappGroupLinks?: Record<string, string>; // Maps domain/position to WhatsApp group link
   // Additional fields
-  status: "pending" | "shortlisted" | "rejected" | "accepted";
+  status: RecruitmentStatus;
+  domainStatuses: IDomainStatus[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -159,6 +170,30 @@ const recruitmentSchema = new Schema<IRecruitment>(
       enum: ["pending", "shortlisted", "rejected", "accepted"],
       default: "pending",
     },
+    domainStatuses: [
+      {
+        domain: {
+          type: String,
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ["pending", "shortlisted", "rejected", "accepted"],
+          default: "pending",
+        },
+        updatedBy: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        remarks: {
+          type: String,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

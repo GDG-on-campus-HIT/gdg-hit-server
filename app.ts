@@ -51,56 +51,88 @@ app.enable("trust proxy");
 
 app.use(cookieParser());
 
-/* ---------------------------- CORS (FIXED) ---------------------------- */
+/* ---------------------------- CORS ---------------------------- */
 
 const allowedOrigins = [
+  // Local development
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3002",
   "http://localhost:5173",
   "http://localhost:5174",
+
+  // Old production domains
   "https://gdghit.site",
   "https://admin.gdghit.site",
-  "https://gdg-hit-main-ffch.vercel.app",
   "https://blog.gdghit.site",
+
+  // Vercel deployments
+  "https://gdg-hit-main-ffch.vercel.app",
   "https://my-admin-panel-livid.vercel.app",
+
+  // Current production domains
   "https://gdghit.dev",
   "https://www.gdghit.dev",
   "https://admin.gdghit.dev",
-  "https://blog.gdghit.dev"
+  "https://blog.gdghit.dev",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like Postman)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const corsOptions = {
+  origin: function (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) {
+    // Allow requests without an Origin header
+    // Example: Postman, server-to-server requests, etc.
+    if (!origin) {
+      return callback(null, true);
+    }
 
-// 🔥 REQUIRED for preflight
-app.options("*", cors());
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-/* ---------------------------- RATE LIMIT (MOVED UP) ---------------------------- */
+    console.log(`❌ CORS blocked origin: ${origin}`);
+
+    return callback(
+      new Error(`CORS not allowed for origin: ${origin}`)
+    );
+  },
+
+  credentials: true,
+
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "PATCH",
+    "OPTIONS",
+  ],
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+  ],
+};
+
+// Main CORS middleware
+app.use(cors(corsOptions));
+
+// Preflight requests
+app.options("*", cors(corsOptions));
+
+/* ---------------------------- RATE LIMIT ---------------------------- */
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 100,
+
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  // Explicitly disable trust proxy validation
-  // If you're behind a reverse proxy (like nginx, cloudflare), this allows the rate limiter to work
+
   validate: {
-    trustProxy: false, // Disable the strict validation
+    trustProxy: false,
   },
 });
 
@@ -148,11 +180,21 @@ app.get(
   (req, res) => {
     const { accessToken, refreshToken } = req.user as any;
 
-    res.cookie("access_token", accessToken, accessTokenOptions);
-    res.cookie("refresh_token", refreshToken, refreshTokenOptions);
+    res.cookie(
+      "access_token",
+      accessToken,
+      accessTokenOptions
+    );
+
+    res.cookie(
+      "refresh_token",
+      refreshToken,
+      refreshTokenOptions
+    );
 
     const frontendHost =
-      process.env.FRONTEND_HOST || "http://localhost:3000";
+      process.env.FRONTEND_HOST ||
+      "http://localhost:3000";
 
     res.send(
       `<script>
@@ -185,11 +227,18 @@ app.get("/test", (req: Request, res: Response) => {
 
 /* ---------------------------- 404 HANDLER ---------------------------- */
 
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
-  const err = new Error(`Route ${req.originalUrl} not found`) as any;
-  err.statusCode = 404;
-  next(err);
-});
+app.all(
+  "*",
+  (req: Request, res: Response, next: NextFunction) => {
+    const err = new Error(
+      `Route ${req.originalUrl} not found`
+    ) as any;
+
+    err.statusCode = 404;
+
+    next(err);
+  }
+);
 
 /* ---------------------------- ERROR MIDDLEWARE ---------------------------- */
 
