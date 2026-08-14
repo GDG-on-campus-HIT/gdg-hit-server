@@ -238,12 +238,20 @@ export const updateAccessToken = CatchAsyncError(
         return next(new ErrorHandler(message, 400));
       }
 
-      const session = await redis.get(decoded.id as string);
-      if (!session) {
-        return next(new ErrorHandler(message, 400));
+      const session = await redis.get(decoded.id as string).catch(() => null);
+      let user: any;
+      if (session) {
+        user = JSON.parse(session);
+      } else {
+        // Redis session missing – fall back to DB
+        const dbUser = await userModel.findById(decoded.id);
+        if (!dbUser) {
+          return next(new ErrorHandler(message, 400));
+        }
+        user = dbUser;
+        // Re-cache the session in Redis
+        redis.set(decoded.id as string, JSON.stringify(dbUser)).catch(() => null);
       }
-
-      const user = JSON.parse(session);
 
       const accessToken = jwt.sign(
         { id: user._id, role: user.role },
