@@ -15,7 +15,7 @@ export const isAuthenticate = CatchAsyncError(
     }
 
     if (!access_token) {
-      return next(new ErrorHandler("Please login to access the resource", 400));
+      return next(new ErrorHandler("Please login to access the resource", 401));
     }
 
     try {
@@ -25,7 +25,7 @@ export const isAuthenticate = CatchAsyncError(
       ) as JwtPayload;
 
       if (!decoded) {
-        return next(new ErrorHandler("Access token is not valid", 400));
+        return next(new ErrorHandler("Access token is not valid", 401));
       }
 
       // Try to get user from Redis cache first
@@ -44,7 +44,7 @@ export const isAuthenticate = CatchAsyncError(
 
       next();
     } catch (error) {
-      return next(new ErrorHandler("Access token is not valid", 400));
+      return next(new ErrorHandler("Access token is not valid", 401));
     }
   }
 );

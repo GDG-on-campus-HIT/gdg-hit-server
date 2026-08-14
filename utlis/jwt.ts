@@ -28,7 +28,7 @@ export const accessTokenOptions: ITokenOptions = {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     hostOnly: false,
     secure: process.env.NODE_ENV === "production",
-    ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.dev" }),
+    ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
 };
 
 export const refreshTokenOptions: ITokenOptions = {
@@ -38,7 +38,7 @@ export const refreshTokenOptions: ITokenOptions = {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     hostOnly: false,
     secure: process.env.NODE_ENV === "production",
-    ...(process.env.NODE_ENV === "production" && { domain: ".gdghit.dev" }),
+    ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
 };
 
 export const sendToken = (user: IUser, statusCode: number, res: Response) => {

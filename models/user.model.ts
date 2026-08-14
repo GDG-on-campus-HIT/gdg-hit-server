@@ -7,6 +7,7 @@ import { Model } from "mongoose";
 const emailRegexPattern: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
   password: string;

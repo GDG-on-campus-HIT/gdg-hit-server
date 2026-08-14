@@ -31,6 +31,7 @@ import eventRegistration from "./routes/eventregistration.route";
 import quizRoute from "./routes/quiz.route";
 import formRouter from "./routes/form.route";
 import recruitmentFormRouter from "./routes/recruitmentForm.route";
+import reviewRouter from "./routes/review.route";
 import { registerSuperadminRoutes } from "./routes/superadmin.route";
 
 export const app = express();
@@ -158,6 +159,7 @@ app.use("/api/v1", eventRegistration);
 app.use("/api/v1", quizRoute);
 app.use("/api/v1", formRouter);
 app.use("/api/v1", recruitmentFormRouter);
+app.use("/api/v1", reviewRouter);
 
 /* ---------------------------- GOOGLE AUTH ---------------------------- */
 
@@ -194,15 +196,16 @@ app.get(
       process.env.FRONTEND_HOST ||
       "http://localhost:3000";
 
-    res.send(`
-      <script>
-        window.opener.postMessage(
-          { success: true },
-          '${frontendHost}'
-        );
-        window.close();
-      </script>
-    `);
+    res.send(
+      `<script>
+        if (window.opener) {
+          window.opener.postMessage({ success: true }, '*');
+          window.close();
+        } else {
+          window.location.href = '${frontendHost}';
+        }
+      </script>`
+    );
   }
 );
 
