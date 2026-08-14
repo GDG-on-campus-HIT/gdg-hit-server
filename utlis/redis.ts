@@ -2,8 +2,15 @@ import { Redis } from "ioredis";
 require('dotenv').config();
 
 const redisClient = () => {
-    if(process.env.REDIS_URL){
-        console.log(`Redis: Attempting connection to ${process.env.REDIS_URL.split('@')[1].split(':')[0]}...`);
+    if (process.env.REDIS_URL) {
+        try {
+            const parts = process.env.REDIS_URL.split('@');
+            const hostPart = parts.length > 1 ? parts[1] : parts[0];
+            const host = hostPart.split(':')[0].replace(/^(redis|rediss|https?):\/\//, '');
+            console.log(`Redis: Attempting connection to ${host}...`);
+        } catch {
+            console.log(`Redis: Attempting connection...`);
+        }
         return process.env.REDIS_URL;
     }
     console.warn('⚠️ Warning: REDIS_URL not found in environment. Redis features will be disabled.');

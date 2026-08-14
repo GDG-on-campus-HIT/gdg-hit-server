@@ -205,7 +205,11 @@ export const updateEvent = CatchAsyncError(
       // Update event banner
       if (req.body.eventBanner) {
         if (event.eventBanner?.public_id) {
-          await imagekit.deleteFile(event.eventBanner.public_id);
+          try {
+            await imagekit.deleteFile(event.eventBanner.public_id);
+          } catch (deleteError) {
+            console.warn("Could not delete old event banner from ImageKit:", deleteError);
+          }
         }
 
         const uploadedBanner = await imagekit.upload({
@@ -222,7 +226,11 @@ export const updateEvent = CatchAsyncError(
       // Update poster
       if (req.body.poster) {
         if (event.poster?.public_id) {
-          await imagekit.deleteFile(event.poster.public_id);
+          try {
+            await imagekit.deleteFile(event.poster.public_id);
+          } catch (deleteError) {
+            console.warn("Could not delete old poster from ImageKit:", deleteError);
+          }
         }
 
         const uploadedPoster = await imagekit.upload({
@@ -239,7 +247,11 @@ export const updateEvent = CatchAsyncError(
       // Update payment QR
       if (req.body.paymentQR) {
         if (event.paymentQR?.public_id) {
-          await imagekit.deleteFile(event.paymentQR.public_id);
+          try {
+            await imagekit.deleteFile(event.paymentQR.public_id);
+          } catch (deleteError) {
+            console.warn("Could not delete old payment QR from ImageKit:", deleteError);
+          }
         }
 
         const uploadedQR = await imagekit.upload({

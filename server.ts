@@ -1,4 +1,4 @@
-// import "@types/express";
+/// <reference path="./@types/custom.d.ts" />
 import { app } from "./app";
 require("dotenv").config();
 import connectDB from "./utlis/db";

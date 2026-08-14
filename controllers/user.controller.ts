@@ -194,14 +194,14 @@ export const logoutUser = CatchAsyncError(
         httpOnly: false,
         sameSite: "none",
         secure: true,
-        ...(process.env.NODE_ENV === "production" && { domain: "gdghit.site" }),
+        ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
       });
       res.cookie("refresh_token", "", {
         maxAge: 1,
         httpOnly: false,
         sameSite: "none",
         secure: true,
-        ...(process.env.NODE_ENV === "production" && { domain: "gdghit.site" }),
+        ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
       });
 
       // Delete user session from Redis

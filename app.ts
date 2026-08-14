@@ -156,8 +156,12 @@ app.get(
 
     res.send(
       `<script>
-        window.opener.postMessage({ success: true }, '${frontendHost}');
-        window.close();
+        if (window.opener) {
+          window.opener.postMessage({ success: true }, '*');
+          window.close();
+        } else {
+          window.location.href = '${frontendHost}';
+        }
       </script>`
     );
   }
