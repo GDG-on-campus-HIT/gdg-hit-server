@@ -9,4 +9,5 @@ node_modules/
 *.env.staging
 
 dist/
+.DS_Store
 scripts/
