@@ -6,6 +6,8 @@ import { RecruitmentFormModel } from "../models/recruitmentForm.model";
 import userModel, { IUser } from "../models/user.model";
 import mongoose, { Document } from "mongoose";
 import { AdminActivityLogModel } from "../models/adminActivityLog.model";
+import { canAccessAllDomains, canAccessAnyDomain, canAccessDomain, hasGlobalDomainAccess } from "../middleware/rbac";
+import { asString, escapeRegex } from "../utlis/query";
 
 const VALID_STATUSES: RecruitmentStatus[] = ["pending", "shortlisted", "rejected", "accepted"];
 
@@ -42,7 +44,10 @@ const buildDefaultDomainStatuses = (
 export const getApplications = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { status, branch, positions, domain } = req.query;
+      const status = asString(req.query.status);
+      const branch = asString(req.query.branch);
+      const positions = asString(req.query.positions);
+      const domain = asString(req.query.domain);
       const query: any = {};
 
       if (status && domain) {
@@ -271,6 +276,10 @@ export const updateApplicationStatus = CatchAsyncError(
         return next(new ErrorHandler("Candidate has not applied for the provided domain", 400));
       }
 
+      if (!canAccessDomain(req.user, matchedDomain)) {
+        return next(new ErrorHandler(`You do not have access to the "${matchedDomain}" domain`, 403));
+      }
+
       if (!Array.isArray(application.domainStatuses) || application.domainStatuses.length === 0) {
         application.domainStatuses = buildDefaultDomainStatuses(application.generalInfo.positions);
       }
@@ -353,6 +362,13 @@ export const deleteApplication = CatchAsyncError(
         return next(new ErrorHandler("Application not found", 404));
       }
 
+      // Deleting removes the candidate from every domain they applied to
+      if (!canAccessAllDomains(req.user, application.generalInfo.positions)) {
+        return next(
+          new ErrorHandler("You can only delete applications where every applied domain is assigned to you", 403)
+        );
+      }
+
       await RecruitmentModel.findByIdAndDelete(id);
 
       res.status(200).json({
@@ -373,6 +389,11 @@ export const getApplication = CatchAsyncError(
       const application = await RecruitmentModel.findById(id);
 
       if (!application) {
+        return next(new ErrorHandler("Application not found", 404));
+      }
+
+      const isOwner = application.user?.toString() === req.user?._id?.toString();
+      if (!isOwner && !canAccessAnyDomain(req.user, application.generalInfo.positions)) {
         return next(new ErrorHandler("Application not found", 404));
       }
 
@@ -443,22 +464,19 @@ export const getAllRecruitmentData = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Extract query parameters for pagination and filtering
-      const {
-        page = 1,
-        limit = 10,
-        branch,
-        year,
-        status,
-        position,
-        formId,
-        q,
-      } = req.query;
+      const { page = 1, limit = 10 } = req.query;
+      const branch = asString(req.query.branch);
+      const year = asString(req.query.year);
+      const status = asString(req.query.status);
+      const position = asString(req.query.position);
+      const formId = asString(req.query.formId);
+      const q = asString(req.query.q);
 
       // Build query object for filtering
       const query: any = {};
 
       if (q) {
-        const searchRegex = new RegExp(q as string, "i");
+        const searchRegex = new RegExp(escapeRegex(q), "i");
         query.$or = [
           { "generalInfo.fullName": searchRegex },
           { "generalInfo.email": searchRegex },
@@ -564,12 +582,17 @@ export const getAllRecruitmentData = CatchAsyncError(
 export const searchRecruitmentData = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { q, page = 1, limit = 10, branch, year, position, status } = req.query;
+      const { page = 1, limit = 10 } = req.query;
+      const q = asString(req.query.q);
+      const branch = asString(req.query.branch);
+      const year = asString(req.query.year);
+      const position = asString(req.query.position);
+      const status = asString(req.query.status);
       const query: any = {};
 
       // Advanced search across multiple fields
       if (q) {
-        const searchRegex = new RegExp(q as string, "i"); // Case-insensitive
+        const searchRegex = new RegExp(escapeRegex(q), "i"); // Case-insensitive
         query.$or = [
           { "generalInfo.fullName": searchRegex },
           { "generalInfo.email": searchRegex },
@@ -681,7 +704,6 @@ const flattenUpdateData = (
   }
 
   if (data.status) flattened.status = data.status;
-  if (data.user) flattened.user = data.user;
 
   return flattened;
 };
@@ -718,6 +740,29 @@ export const updateRecruitmentData = CatchAsyncError(
       const existingRecruitment = await RecruitmentModel.findById(id);
       if (!existingRecruitment) {
         return next(new ErrorHandler("Recruitment record not found", 404));
+      }
+
+      const existingPositions = existingRecruitment.generalInfo.positions;
+      if (!canAccessAnyDomain(req.user, existingPositions)) {
+        return next(new ErrorHandler("Recruitment record not found", 404));
+      }
+
+      if (!hasGlobalDomainAccess(req.user)) {
+        // The overall status spans every applied domain; per-domain status goes through updateApplicationStatus
+        if (updateData.status && !canAccessAllDomains(req.user, existingPositions)) {
+          return next(
+            new ErrorHandler("Overall status can only be changed when every applied domain is assigned to you", 403)
+          );
+        }
+        const newPositions = updateData.generalInfo?.positions;
+        if (newPositions !== undefined) {
+          const added = (Array.isArray(newPositions) ? newPositions : []).filter(
+            (p) => !existingPositions.includes(p)
+          );
+          if (!Array.isArray(newPositions) || !added.every((p) => canAccessDomain(req.user, p))) {
+            return next(new ErrorHandler("You can only add positions in your assigned domains", 403));
+          }
+        }
       }
 
       // Flatten the update data to use dot notation
@@ -826,10 +871,11 @@ export const getAllUsersWithApplications = CatchAsyncError(
 
       // Build user query with filters
       const userQuery: any = {};
-      if (q) {
-        userQuery.name = { $regex: q, $options: "i" }; // Case-insensitive search
+      const search = asString(q);
+      if (search) {
+        userQuery.name = { $regex: escapeRegex(search), $options: "i" }; // Case-insensitive search
       }
-      if (branch) {
+      if (asString(branch)) {
         userQuery.department = branch;
       }
 
@@ -1012,6 +1058,10 @@ export const updateRoleWhatsappLink = CatchAsyncError(
         return next(new ErrorHandler("Role not found in this form", 404));
       }
 
+      if (!canAccessDomain(req.user, form.roles[roleIndex].roleName)) {
+        return next(new ErrorHandler("You do not have access to this role's domain", 403));
+      }
+
       form.roles[roleIndex].whatsappLink = whatsappLink;
       await form.save();
 
@@ -1057,6 +1107,10 @@ export const updateRoleWhatsappLinkByName = CatchAsyncError(
 
       if (roleIndex === -1) {
         return next(new ErrorHandler(`Role "${roleName}" not found in this form`, 404));
+      }
+
+      if (!canAccessDomain(req.user, form.roles[roleIndex].roleName)) {
+        return next(new ErrorHandler("You do not have access to this role's domain", 403));
       }
 
       form.roles[roleIndex].whatsappLink = whatsappLink;

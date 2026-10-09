@@ -15,6 +15,14 @@ import sendMail from "../utlis/sendMail";
 import { redis } from "../utlis/redis";
 import { getUserById } from "../services/user.service";
 import emailVerificationModel from "../models/emailVerification";
+import crypto from "crypto";
+import { asString } from "../utlis/query";
+import { cacheUserSession, clearUserSession } from "../utlis/session";
+
+const MAX_ACTIVATION_ATTEMPTS = 5;
+
+const hashToken = (token: string): string =>
+  crypto.createHash("sha256").update(token).digest("hex");
 
 interface IRegistrationBody {
   name: string;
@@ -25,7 +33,12 @@ interface IRegistrationBody {
 export const registrationUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, email, password } = req.body;
+      const { name, password } = req.body;
+      const email = asString(req.body?.email)?.toLowerCase();
+
+      if (!email) {
+        return next(new ErrorHandler("Please enter a valid email", 400));
+      }
 
       const isEmailExist = await userModel.findOne({ email });
       if (isEmailExist) {
@@ -38,7 +51,7 @@ export const registrationUser = CatchAsyncError(
         password,
       };
 
-      const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const activationCode = crypto.randomInt(1000, 10000).toString();
 
       const data = { user: { name: user.name }, activationCode };
 
@@ -48,6 +61,7 @@ export const registrationUser = CatchAsyncError(
       if (emailVerification) {
         // Update the existing document
         emailVerification.otp = activationCode;
+        emailVerification.attempts = 0;
         await emailVerification.save();
         console.log("Email updated");
       } else {
@@ -75,8 +89,6 @@ export const registrationUser = CatchAsyncError(
         res.status(201).json({
           success: true,
           message: `Please check your email : ${user.email} to activate your account`,
-          user,
-          activationCode, // Return activation code in response
         });
       } catch (error: any) {
         console.log(error);
@@ -107,8 +119,13 @@ interface IActivationRequest {
 export const activateUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { activation_code, email, name, password } =
-        req.body as IActivationRequest;
+      const { name, password } = req.body as IActivationRequest;
+      const email = asString(req.body?.email)?.toLowerCase();
+      const activation_code = asString(req.body?.activation_code);
+
+      if (!email || !activation_code) {
+        return next(new ErrorHandler("Email and activation code are required", 400));
+      }
 
       const newUser = await emailVerificationModel.findOne({
         email,
@@ -120,7 +137,16 @@ export const activateUser = CatchAsyncError(
         );
       }
 
-      if (newUser?.otp !== activation_code) {
+      if (newUser.attempts >= MAX_ACTIVATION_ATTEMPTS) {
+        await newUser.deleteOne();
+        return next(
+          new ErrorHandler("Too many incorrect attempts. Please register again.", 429)
+        );
+      }
+
+      if (newUser.otp !== activation_code) {
+        newUser.attempts += 1;
+        await newUser.save();
         return next(new ErrorHandler("Invalid activation code", 400));
       }
 
@@ -134,7 +160,10 @@ export const activateUser = CatchAsyncError(
         name,
         email,
         password,
+        isVerified: true,
       });
+
+      await newUser.deleteOne();
 
       sendToken(user, 200, res);
     } catch (error: any) {
@@ -207,9 +236,7 @@ export const logoutUser = CatchAsyncError(
       // Delete user session from Redis
       const userId = req.user?._id?.toString() || "";
 
-      if (userId) {
-        redis.del(userId);
-      }
+      await clearUserSession(userId);
 
       // Send response
       res.status(200).json({
@@ -249,8 +276,7 @@ export const updateAccessToken = CatchAsyncError(
           return next(new ErrorHandler(message, 400));
         }
         user = dbUser;
-        // Re-cache the session in Redis
-        redis.set(decoded.id as string, JSON.stringify(dbUser)).catch(() => null);
+        await cacheUserSession(dbUser);
       }
 
       const accessToken = jwt.sign(
@@ -333,10 +359,7 @@ export const updateUserInfo = CatchAsyncError(
       // Save updated user info
       await user.save();
 
-      // Update user information in Redis
-      if (userId) {
-        await redis.set(userId, JSON.stringify(user));
-      }
+      await cacheUserSession(user);
 
       // Return the updated user information in response
       res.status(200).json({
@@ -394,17 +417,7 @@ export const updatePassword = CatchAsyncError(
       user.password = newpassword;
       await user.save();
 
-      // Update user session in Redis
-      try {
-        await redis.set(
-          req.user?._id?.toString() as string,
-          JSON.stringify(user)
-        );
-      } catch (redisError) {
-        return next(
-          new ErrorHandler("Error updating user session in Redis", 500)
-        );
-      }
+      await cacheUserSession(user);
 
       res.status(200).json({
         success: true,
@@ -422,19 +435,19 @@ export const updatePassword = CatchAsyncError(
 export const sendPasswordResetEmail = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email } = req.body as { email: string };
+      const email = asString(req.body?.email);
+      const genericMessage =
+        "If an account exists for that email, a password reset link has been sent.";
 
       // Validate input
       if (!email) {
         return next(new ErrorHandler("Please enter your email address.", 400));
       }
 
-      const user = await userModel.findOne({ email });
+      const user = await userModel.findOne({ email: email.toLowerCase() });
 
       if (!user) {
-        return next(
-          new ErrorHandler("No account found with that email address.", 400)
-        );
+        return res.status(201).json({ success: true, message: genericMessage });
       }
 
       const secret = user._id.toString() + process.env.ACCESS_TOKEN;
@@ -442,14 +455,13 @@ export const sendPasswordResetEmail = CatchAsyncError(
         expiresIn: "15m",
       });
 
-      // Store reset token and expiration in database
-      user.resetPasswordToken = token;
+      // Store only a hash of the token so a DB read can't be replayed as a reset link
+      user.resetPasswordToken = hashToken(token);
       user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
       await user.save();
 
       // Generate reset link
       const resetLink = `${process.env.FRONTEND_HOST}/account/reset-password-confirm/${user._id}/${token}`;
-      console.log(resetLink); // Log the reset link for debugging
 
       const data = { user: { name: user.name }, resetLink };
 
@@ -467,10 +479,7 @@ export const sendPasswordResetEmail = CatchAsyncError(
           data,
         });
 
-        res.status(201).json({
-          success: true,
-          message: `A password reset link has been sent to ${user.email}. Please check your email.`,
-        });
+        res.status(201).json({ success: true, message: genericMessage });
       } catch (error: any) {
         console.error("Error sending email:", error);
         return next(
@@ -537,7 +546,9 @@ export const resetPassword = CatchAsyncError(
       }
 
       // Find user by ID and check reset token
-      const user = await userModel.findById(id);
+      const user = await userModel
+        .findById(id)
+        .select("+resetPasswordToken +resetPasswordExpires");
 
       if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
         return next(new ErrorHandler("Invalid or expired reset token.", 400));
@@ -560,7 +571,7 @@ export const resetPassword = CatchAsyncError(
         );
       }
 
-      if (user.resetPasswordToken !== token) {
+      if (user.resetPasswordToken !== hashToken(token)) {
         return next(
           new ErrorHandler(
             "Invalid reset token. Please request a new password reset link.",
@@ -574,6 +585,7 @@ export const resetPassword = CatchAsyncError(
       user.resetPasswordToken = undefined; // Mark the token as used
       user.resetPasswordExpires = undefined; // Clear the expiration date
       await user.save();
+      await clearUserSession(user._id);
 
       res.status(200).json({
         success: true,

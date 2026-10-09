@@ -6,6 +6,7 @@ import { eventModel } from "../models/events.model";
 import { eventRegistrationModel } from "../models/events.model";
 import { certificateModel } from "../models/certificate.model";
 import { IRecruitment, RecruitmentModel } from "../models/recruitment.model";
+import { asString, escapeRegex, parsePagination } from "../utlis/query";
 
 export const getUserAnalytics = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -337,15 +338,10 @@ export const getRecruitmentAnalytics = CatchAsyncError(
 export const getAllUsers = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Extract query parameters for pagination and filtering
-      const {
-        page = 1,
-        limit = 10,
-        role,
-        department,
-        isVerified,
-        name,
-      } = req.query;
+      const role = asString(req.query.role);
+      const department = asString(req.query.department);
+      const isVerified = asString(req.query.isVerified);
+      const name = asString(req.query.name);
 
       // Build query object for filtering
       const query: any = {};
@@ -360,13 +356,10 @@ export const getAllUsers = CatchAsyncError(
         query.isVerified = isVerified === 'true'; // Convert string 'true'/'false' to boolean
       }
       if (name) {
-        query.name = { $regex: new RegExp(name as string, 'i') }; // Case-insensitive name search
+        query.name = { $regex: escapeRegex(name), $options: 'i' }; // Case-insensitive name search
       }
 
-      // Convert page and limit to numbers
-      const pageNum = parseInt(page as string, 10);
-      const limitNum = parseInt(limit as string, 10);
-      const skip = (pageNum - 1) * limitNum;
+      const { pageNum, limitNum, skip } = parsePagination(req.query.page, req.query.limit);
 
       // Fetch total count for pagination
       const totalDocuments = await userModel.countDocuments(query);
@@ -374,7 +367,7 @@ export const getAllUsers = CatchAsyncError(
       // Fetch user data with pagination and filtering
       const users = await userModel
         .find(query)
-        .select('-password') // Exclude password field from response
+        .select('name email role classRollNo department whatsappNo isVerified assignedDomains linkedinProfile githubProfile createdAt updatedAt')
         .skip(skip)
         .limit(limitNum)
         .sort({ createdAt: -1 }); // Sort by creation date, newest first

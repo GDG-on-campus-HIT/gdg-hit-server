@@ -21,7 +21,7 @@ reviewRouter.delete("/delete-review/:reviewId", isAuthenticate, deleteReview);
 reviewRouter.get(
   "/get-all-reviews",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("super_domain_admin", "super_admin"),
   getAllReviews
 );
 

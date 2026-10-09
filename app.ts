@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import passport from "passport";
 import { rateLimit } from "express-rate-limit";
+import Jwt, { JwtPayload } from "jsonwebtoken";
 
 import "./config/google.strategy";
 import { ErrorMiddleware } from "./middleware/error";
@@ -46,8 +47,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.set("trust proxy", true);
-app.enable("trust proxy");
+// `true` would make req.ip the client-controlled leftmost X-Forwarded-For entry
+app.set("trust proxy", parseInt(process.env.TRUST_PROXY_HOPS || "1", 10));
 
 app.use(cookieParser());
 
@@ -124,20 +125,75 @@ app.options("*", cors(corsOptions));
 
 /* ---------------------------- RATE LIMIT ---------------------------- */
 
+const ADMIN_ROLES = new Set(["domain_lead", "super_domain_admin", "super_admin"]);
+const tokenUserCache = new WeakMap<Request, { id: string; role?: string } | null>();
+
+// Signature-verified only (no DB hit); used to key the limiter per account instead of per IP,
+// since many students share a campus/hostel IP.
+const getTokenUser = (req: Request) => {
+  if (tokenUserCache.has(req)) return tokenUserCache.get(req) ?? null;
+  let token = req.cookies?.access_token as string | undefined;
+  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+  let user: { id: string; role?: string } | null = null;
+  if (token) {
+    try {
+      const decoded = Jwt.verify(token, process.env.ACCESS_TOKEN as string) as JwtPayload;
+      if (decoded?.id) user = { id: String(decoded.id), role: decoded.role };
+    } catch {
+      user = null;
+    }
+  }
+  tokenUserCache.set(req, user);
+  return user;
+};
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: (req: Request) => {
+    const user = getTokenUser(req);
+    if (!user) return 100;
+    return user.role && ADMIN_ROLES.has(user.role) ? 2000 : 300;
+  },
+  keyGenerator: (req: Request) => {
+    const user = getTokenUser(req);
+    return user ? `user:${user.id}` : req.ip || "unknown";
+  },
 
   standardHeaders: "draft-7",
   legacyHeaders: false,
+});
 
-  validate: {
-    trustProxy: false,
-  },
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { success: false, message: "Too many attempts. Please try again later." },
+});
+
+const publicFormLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { success: false, message: "Too many submissions. Please try again later." },
 });
 
 if (process.env.NODE_ENV === "production") {
   app.use(limiter);
+  app.use(
+    [
+      "/api/v1/login",
+      "/api/v1/registration",
+      "/api/v1/activate-user",
+      "/api/v1/reset-password-link",
+      "/api/v1/reset-password",
+    ],
+    authLimiter
+  );
+  app.post(["/api/v1/contact", "/api/v1/testimonial"], publicFormLimiter);
 }
 
 /* ---------------------------- ROUTES ---------------------------- */

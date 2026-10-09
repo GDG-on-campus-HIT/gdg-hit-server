@@ -6,6 +6,14 @@ import sendMail from "../utlis/sendMail";
 import { certificateModel } from "../models/certificate.model";
 import { mailModel } from "../models/mail.model";
 
+const escapeHtml = (value: string): string =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 export const sendCertificateMail = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -409,7 +417,7 @@ export const sendPromotionMail = CatchAsyncError(
                 </div>
         
                 <div class="content">
-                    <h3>Hello ${name} 👋,</h3>
+                    <h3>Hello ${escapeHtml(name)} 👋,</h3>
                     
                     <p style="margin-top: 20px; margin-bottom: 20px;">
                     Ready to be part of something BIGGER? The wait is over - <strong>GDG on campus HIT</strong> is opening its doors for brilliant minds and passionate talents to join our powerhouse team! If you live and breathe tech, creativity, or community building, this is YOUR MOMENT to shine! 

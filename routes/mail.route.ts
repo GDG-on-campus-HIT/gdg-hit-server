@@ -26,7 +26,12 @@ mailRoute.post(
 
 // mailRoute.post('/invite-mail/:registration_id',isAuthenticate, authorizeRoles("admin"), sendInviteMail);
 
-mailRoute.post("/sendPromotionMail", sendPromotionMail);
+mailRoute.post(
+  "/sendPromotionMail",
+  isAuthenticate,
+  authorizeRoles("super_domain_admin", "super_admin"),
+  sendPromotionMail
+);
 
 mailRoute.post(
   "/sendRecruitmentEmails",

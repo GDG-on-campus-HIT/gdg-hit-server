@@ -1,4 +1,5 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
+import { isValidObjectId } from "mongoose";
 import { isAuthenticate, authorizeRoles } from "../middleware/auth";
 import {
   createMemberIdCard,
@@ -11,14 +12,30 @@ import {
 
 const membersIdRouter = express.Router();
 
-// Public routes - Anyone can access
-membersIdRouter.get("/all", getAllMemberIdCards);
-membersIdRouter.get("/:memberId", getMemberIdCard);
+const ID_CARD_ADMINS = ["domain_lead", "super_domain_admin", "super_admin"];
 
-// Admin only routes - Require authentication and admin role (also available to super_admin)
-membersIdRouter.post("/create", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), createMemberIdCard);
-membersIdRouter.put("/update/:id", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), updateMemberIdCard);
-membersIdRouter.delete("/deleteId/:id", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), deleteMemberIdCard);
-membersIdRouter.patch("/toggle-status/:id", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), toggleIdCardStatus);
+// This router is mounted at /api/v1 root, so "/:memberId" would otherwise
+// swallow every unknown GET (e.g. /api/v1/users) and throw a CastError.
+const requireObjectIdParam =
+  (param: string) => (req: Request, _res: Response, next: NextFunction) => {
+    if (!isValidObjectId(req.params[param])) return next("route");
+    next();
+  };
+
+// Namespaced routes (preferred)
+membersIdRouter.get("/member-id-cards", getAllMemberIdCards);
+membersIdRouter.get("/member-id-cards/:memberId", requireObjectIdParam("memberId"), getMemberIdCard);
+membersIdRouter.post("/member-id-cards", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), createMemberIdCard);
+membersIdRouter.put("/member-id-cards/:id", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), updateMemberIdCard);
+membersIdRouter.delete("/member-id-cards/:id", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), deleteMemberIdCard);
+membersIdRouter.patch("/member-id-cards/:id/toggle-status", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), toggleIdCardStatus);
+
+// Legacy paths, kept so existing clients and printed QR codes keep working
+membersIdRouter.get("/all", getAllMemberIdCards);
+membersIdRouter.get("/:memberId", requireObjectIdParam("memberId"), getMemberIdCard);
+membersIdRouter.post("/create", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), createMemberIdCard);
+membersIdRouter.put("/update/:id", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), updateMemberIdCard);
+membersIdRouter.delete("/deleteId/:id", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), deleteMemberIdCard);
+membersIdRouter.patch("/toggle-status/:id", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), toggleIdCardStatus);
 
 export default membersIdRouter;

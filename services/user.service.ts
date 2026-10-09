@@ -3,6 +3,7 @@ import { redis } from './../utlis/redis';
 
 import { Response } from "express";
 import userModel from "../models/user.model";
+import { getPermissionsForRole } from "../utlis/permissions";
 
 
 export const getUserById = async (id: string, res: Response) => {
@@ -18,6 +19,7 @@ export const getUserById = async (id: string, res: Response) => {
         return res.status(200).json({
             success: true,
             user,
+            permissions: getPermissionsForRole(user?.role),
         });
     }
 
@@ -33,5 +35,6 @@ export const getUserById = async (id: string, res: Response) => {
     return res.status(200).json({
         success: true,
         user,
+        permissions: getPermissionsForRole(user.role),
     });
 };

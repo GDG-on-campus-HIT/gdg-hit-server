@@ -4,6 +4,7 @@ import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import userModel, { IUser } from "../models/user.model";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { AdminActivityLogModel } from "../models/adminActivityLog.model";
+import { clearUserSession } from "../utlis/session";
 
 // Get all admins
 export const getAllAdmins = CatchAsyncError(
@@ -144,6 +145,7 @@ export const updateAdminRole = CatchAsyncError(
       }
 
       await admin.save();
+      await clearUserSession(admin._id);
 
       // Log the action (Non-blocking to improve performance)
       AdminActivityLogModel.create({
@@ -198,6 +200,7 @@ export const removeAdmin = CatchAsyncError(
 
       // Remove the admin
       await userModel.findByIdAndDelete(adminId);
+      await clearUserSession(adminId);
 
       // Log the action (Non-blocking to improve performance)
       AdminActivityLogModel.create({

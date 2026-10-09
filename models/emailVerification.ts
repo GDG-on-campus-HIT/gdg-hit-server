@@ -6,6 +6,7 @@ const emailRegexPattern: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export interface EmailVerification extends Document {
   email: string;
   otp: string;
+  attempts: number;
   createdAt: Date;
 }
 
@@ -25,6 +26,10 @@ const emailVerificationSchema: Schema<EmailVerification> = new mongoose.Schema({
   otp:{
     type:String,
     required: true,
+  },
+  attempts:{
+    type:Number,
+    default:0,
   },
   createdAt:{
     type: Date,

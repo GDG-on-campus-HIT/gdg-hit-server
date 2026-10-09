@@ -31,6 +31,8 @@ import {
 
 const eventRouter = express.Router();
 
+const CONTENT_MANAGERS = ["super_domain_admin", "super_admin"];
+
 // Get all events
 eventRouter.get("/events", getEvents);
 
@@ -38,13 +40,13 @@ eventRouter.get("/events", getEvents);
 eventRouter.get("/events/:id", getEventById);
 
 // Create a new event
-eventRouter.post("/events", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), addEvent);
+eventRouter.post("/events", isAuthenticate, authorizeRoles(...CONTENT_MANAGERS), addEvent);
 
 // Update an existing event
 eventRouter.put(
   "/events/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   updateEvent
 );
 
@@ -52,7 +54,7 @@ eventRouter.put(
 eventRouter.delete(
   "/events/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   deleteEvent
 );
 
@@ -68,14 +70,14 @@ eventRouter.get(
 eventRouter.post(
   "/event-gallery/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   uploadGalleryForEvent
 );
 
 eventRouter.put(
   "/event-gallery/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   updateGalleryForEvent
 );
 
@@ -133,13 +135,13 @@ eventRouter.delete(
 eventRouter.get("/faqs", getFAQs);
 
 // Create a new FAQ
-eventRouter.post("/faqs", isAuthenticate, authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), addFAQ);
+eventRouter.post("/faqs", isAuthenticate, authorizeRoles(...CONTENT_MANAGERS), addFAQ);
 
 // Update an existing FAQ
 eventRouter.put(
   "/faqs/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   updateFAQ
 );
 
@@ -147,7 +149,7 @@ eventRouter.put(
 eventRouter.delete(
   "/faqs/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   deleteFAQ
 );
 
@@ -155,17 +157,17 @@ eventRouter.delete(
 // eventRouter.post('/addMultipleRegistration', addMultipleRegistration);
 eventRouter.post(
   "/events/:eventId/poster",
-  // isAuthenticate,
-  // authorizeRoles("admin"),
+  isAuthenticate,
+  authorizeRoles(...CONTENT_MANAGERS),
   uploadEventPoster
-);  
+);
 // Event poster routes
 eventRouter.get("/events/:eventId/poster", getEventPoster);
 // Update/replace poster (admin only)
 eventRouter.put(
   "/events/:eventId/poster",
-  // isAuthenticate,
-  // authorizeRoles("admin"),
+  isAuthenticate,
+  authorizeRoles(...CONTENT_MANAGERS),
   uploadEventPoster
 );
 
@@ -175,7 +177,7 @@ eventRouter.get("/events/:eventId/contact", getEventContactInfo);
 eventRouter.put(
   "/events/:eventId/contact",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   updateEventContactInfo
 );
 
@@ -184,7 +186,7 @@ eventRouter.put(
 eventRouter.post(
   "/events/:eventId/whatsapp",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   setEventWhatsappLink
 );
 

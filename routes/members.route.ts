@@ -13,6 +13,8 @@ import {
 
 const memberRouter = express.Router();
 
+const CONTENT_MANAGERS = ["super_domain_admin", "super_admin"];
+
 // Get all members including inactive (Admin only)
 memberRouter.get(
   "/members/admin/all",
@@ -32,14 +34,14 @@ memberRouter.get(
 memberRouter.post(
   "/members",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   addMember
 );
 
 memberRouter.put(
   "/members/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   updateMember
 );
 
@@ -47,7 +49,7 @@ memberRouter.put(
 memberRouter.patch(
   "/members/toggle-status/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   toggleMemberStatus
 );
 
@@ -55,7 +57,7 @@ memberRouter.patch(
 memberRouter.delete(
   "/members/hard-delete/:id",
   isAuthenticate,
-  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  authorizeRoles(...CONTENT_MANAGERS),
   deleteMember
 );
 

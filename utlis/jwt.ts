@@ -1,7 +1,8 @@
 require('dotenv').config();
 import { IUser } from "../models/user.model";
 import { Response } from "express";
-import { redis } from "./redis";
+import { cacheUserSession, toSafeUser } from "./session";
+import { getPermissionsForRole } from "./permissions";
 
 interface ITokenOptions {
     expires: Date;
@@ -45,18 +46,15 @@ export const sendToken = (user: IUser, statusCode: number, res: Response) => {
     const accessToken = user.SignAcessToken();
     const refreshToken = user.SignRefreshToken();
 
-    redis.set(user._id as any, JSON.stringify(user) as any);
-
-    // if(process.env.NODE_ENV === 'producttion'){
-    //     accessTokenOptions.secure = true;
-    // }
+    cacheUserSession(user);
 
     res.cookie("access_token", accessToken, accessTokenOptions);
     res.cookie("refresh_token", refreshToken, refreshTokenOptions);
 
     res.status(statusCode).json({
         success: true,
-        user,
+        user: toSafeUser(user),
+        permissions: getPermissionsForRole(user.role),
         accessToken
     })
 }

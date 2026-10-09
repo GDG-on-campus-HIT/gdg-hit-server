@@ -25,6 +25,25 @@ const ROLE_HIERARCHY: Record<RoleType, number> = {
   user: 20,
 };
 
+const normalizeDomain = (domain: string): string => domain.trim().toLowerCase();
+
+export const hasGlobalDomainAccess = (user: any): boolean =>
+  user?.role === ROLES.SUPER_ADMIN || user?.role === ROLES.SUPER_DOMAIN_ADMIN;
+
+export const canAccessDomain = (user: any, domain: unknown): boolean => {
+  if (hasGlobalDomainAccess(user)) return true;
+  if (user?.role !== ROLES.DOMAIN_LEAD || typeof domain !== "string") return false;
+  const assigned: string[] = user.assignedDomains || [];
+  return assigned.some((d) => normalizeDomain(d) === normalizeDomain(domain));
+};
+
+export const canAccessAnyDomain = (user: any, domains: string[] = []): boolean =>
+  hasGlobalDomainAccess(user) || domains.some((d) => canAccessDomain(user, d));
+
+export const canAccessAllDomains = (user: any, domains: string[] = []): boolean =>
+  hasGlobalDomainAccess(user) ||
+  (domains.length > 0 && domains.every((d) => canAccessDomain(user, d)));
+
 /**
  * Role-based Authorization Guard
  * Ensures the user has one of the required roles to access the resource.
@@ -60,26 +79,17 @@ export const domainGuard = CatchAsyncError(
       return next(new ErrorHandler("User not found in request context", 401));
     }
 
-    const { role } = user;
-    
+    // Only this middleware may set domainRestriction; never trust it from the client
+    delete (req.query as any).domainRestriction;
+
     // Super Admin and Super Domain Admin have full visibility across all domains
-    if (role === ROLES.SUPER_ADMIN || role === ROLES.SUPER_DOMAIN_ADMIN) {
+    if (hasGlobalDomainAccess(user)) {
       return next();
     }
 
     // Role-based domain restrictions for Domain Leads
-    if (role === ROLES.DOMAIN_LEAD) {
-      // We assume user schema has an 'assignedDomains' array (strings)
-      // e.g., ["Web Dev", "AI/ML"]
+    if (user.role === ROLES.DOMAIN_LEAD) {
       const assignedDomains: string[] = (user as any).assignedDomains || [];
-
-      // Extract the requested domain from various possible sources
-      const requestedDomain =
-        (req.query.domain as string) ||
-        (req.query.position as string) ||
-        (req.body.domain as string) ||
-        (req.body.position as string) ||
-        (req.params.domain as string);
 
       // No domains assigned: cannot access recruitment data scoped by domain
       if (assignedDomains.length === 0) {
@@ -91,30 +101,36 @@ export const domainGuard = CatchAsyncError(
         );
       }
 
-      // Edge case: If no domain is specified in the request
-      if (!requestedDomain) {
-        // If they are trying to list all data, we force a filter in the query
-        // This is a common pattern to prevent data leakage
-        if (req.method === "GET" && !Object.keys(req.params).length) {
-          req.query.domainRestriction = assignedDomains as any;
-          return next();
-        }
+      // Every domain-like value anywhere in the request must be assigned, because
+      // controllers read different fields than the first one present
+      const requestedDomains = [
+        req.query.domain,
+        req.query.position,
+        req.query.positions,
+        req.body?.domain,
+        req.body?.position,
+        req.body?.roleName,
+        req.params.domain,
+      ].flatMap((value) => (value === undefined ? [] : Array.isArray(value) ? value : [value]));
 
-        return next(new ErrorHandler("Domain specification is required for your role.", 403));
-      }
-
-      // Check if the requested domain is within their assigned domains
-      const hasAccess = assignedDomains.some(
-        (d) => d.toLowerCase() === requestedDomain.toLowerCase()
-      );
-
-      if (!hasAccess) {
+      const denied = requestedDomains.find((d) => !canAccessDomain(user, d));
+      if (denied !== undefined) {
         return next(
           new ErrorHandler(
-            `Unauthorized: You do not have access to the "${requestedDomain}" domain.`,
+            `Unauthorized: You do not have access to the "${String(denied)}" domain.`,
             403
           )
         );
+      }
+
+      if (req.method === "GET") {
+        req.query.domainRestriction = assignedDomains as any;
+        return next();
+      }
+
+      // Single-resource routes are checked against the resource's own domains in the controller
+      if (requestedDomains.length === 0 && !Object.keys(req.params).length) {
+        return next(new ErrorHandler("Domain specification is required for your role.", 403));
       }
 
       return next();

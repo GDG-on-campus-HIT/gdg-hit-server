@@ -1,6 +1,6 @@
 import express from 'express';
 import { addPriorKnowledge, checkIfRegistered, getParticipant, getPriorKnowledge, registerParticipant } from '../controllers/eventregistration.controller';
-import { isAuthenticate } from '../middleware/auth';
+import { authorizeRoles, isAuthenticate } from '../middleware/auth';
 
 const eventRegistration = express.Router();
 
@@ -12,7 +12,12 @@ eventRegistration.get('/events/:eventId/prior-knowledge',isAuthenticate, getPrio
 
 eventRegistration.post('/events/:eventId/prior-knowledge',isAuthenticate, addPriorKnowledge);
 
-eventRegistration.get('/event-participant/sheet/:eventId', getParticipant);
+eventRegistration.get(
+    '/event-participant/sheet/:eventId',
+    isAuthenticate,
+    authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+    getParticipant
+);
 
 eventRegistration.get(
     "/event-id-register/:event",

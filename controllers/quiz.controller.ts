@@ -34,6 +34,9 @@ interface QuizResult {
   prerequisites: string[];
 }
 
+const toPublicQuestions = (questions: QuizQuestion[]) =>
+  questions.map(({ question, options }) => ({ question, options }));
+
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(
   process.env.GEMINI_API_KEY || "YOUR_API_KEY"
@@ -129,21 +132,16 @@ export const generateQuiz = async (req: Request, res: Response) => {
   try {
     // Verify participant exists
 
-    const participantId = await Participant.findOne({
+    const participant = await Participant.findOne({
       user: userId,
       event: eventId,
-    }).select("_id");
+    });
 
-    if (!participantId) {
-      return res.status(404).json({ error: "Participant not found" });
-    }
-
-    console.log("Participant ID:", participantId);
-
-    const participant = await Participant.findOne({ user: userId });
     if (!participant) {
       return res.status(404).json({ error: "Participant not found" });
     }
+
+    const participantId = participant._id;
 
     // Verify event exists
     const event = await eventModel.findById(participant.event);
@@ -159,7 +157,7 @@ export const generateQuiz = async (req: Request, res: Response) => {
     if (existingQuiz) {
       return res
         .status(200)
-        .json({ quizId: existingQuiz._id, questions: existingQuiz.questions });
+        .json({ quizId: existingQuiz._id, questions: toPublicQuestions(existingQuiz.questions) });
     }
 
     // Get prior knowledge skills for the event
@@ -280,7 +278,7 @@ export const generateQuiz = async (req: Request, res: Response) => {
     quiz.questions = questions;
     await quiz.save();
 
-    res.status(200).json({ quizId: quiz._id, questions });
+    res.status(200).json({ quizId: quiz._id, questions: toPublicQuestions(questions) });
   } catch (error) {
     console.error("Error generating quiz:", error);
     res.status(500).json({ error: "Failed to generate quiz" });
@@ -353,7 +351,7 @@ export const getUserQuiz = async (req: Request, res: Response) => {
       userId,
       quizGenerated: true,
       quizId: quiz._id,
-      questions: quiz.questions,
+      questions: toPublicQuestions(quiz.questions),
       priorKnowledge: quiz.priorKnowledge,
       message: "Quiz generated but not yet answered",
     });
@@ -381,7 +379,7 @@ export const submitQuiz = async (req: Request, res: Response) => {
   try {
     // Verify quiz exists
     const quiz = await Quiz.findById(quizId);
-    if (!quiz) {
+    if (!quiz || quiz.user?.toString() !== req.user?._id?.toString()) {
       return res.status(404).json({ error: "Quiz not found" });
     }
 
@@ -513,6 +511,12 @@ export const checkUserQuizStatus = async (req: Request, res: Response) => {
   }
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
     return res.status(400).json({ error: "Valid user ID is required" });
+  }
+
+  const isSelf = userId === req.user?._id?.toString();
+  const isAdmin = ["domain_lead", "super_domain_admin", "super_admin"].includes(req.user?.role || "");
+  if (!isSelf && !isAdmin) {
+    return res.status(403).json({ error: "You can only view your own quiz status" });
   }
 
   try {

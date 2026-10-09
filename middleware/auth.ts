@@ -4,6 +4,7 @@ import { redis } from "../utlis/redis";
 import { CatchAsyncError } from "./CatchAsyncError";
 import { NextFunction, Request, Response } from "express";
 import userModel from "../models/user.model";
+import { cacheUserSession } from "../utlis/session";
 
 // authenticated user
 export const isAuthenticate = CatchAsyncError(
@@ -37,9 +38,10 @@ export const isAuthenticate = CatchAsyncError(
         // Fallback to database if Redis fails or user is not in cache
         const dbUser = await userModel.findById(decoded.id);
         if (!dbUser) {
-          return next(new ErrorHandler("User not found", 404));
+          return next(new ErrorHandler("User not found", 401));
         }
         req.user = dbUser;
+        await cacheUserSession(dbUser);
       }
 
       next();

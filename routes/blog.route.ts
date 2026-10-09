@@ -22,8 +22,8 @@ blogRouter.get("/blog/:id", getBlogById);
 // ✅ Member/Admin Routes
 blogRouter.post(
   "/createBlog",
-  // isAuthenticate,
-  authorizeRoles("admin", "member"),
+  isAuthenticate,
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   upload.single("image"),
   addBlog
 );
@@ -31,7 +31,7 @@ blogRouter.post(
 blogRouter.put(
   "/updateBlog/:id",
   isAuthenticate,
-  authorizeRoles("admin", "member"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   upload.single("image"),
   updateBlog
 );
@@ -40,7 +40,7 @@ blogRouter.put(
 blogRouter.patch(
   "/softDeleteBlog/:id",
   isAuthenticate,
-  authorizeRoles("admin", "member"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   softDeleteBlog
 );
 
@@ -48,14 +48,14 @@ blogRouter.patch(
 blogRouter.get(
   "/admin/allBlogs",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("super_domain_admin", "super_admin"),
   getAllBlogsAdmin
 );
 
 blogRouter.patch(
   "/admin/unlistBlog/:id",
   isAuthenticate,
-  authorizeRoles("admin", "super_admin"),
+  authorizeRoles("super_domain_admin", "super_admin"),
   adminSoftDeleteBlog
 );
 
