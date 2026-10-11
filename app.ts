@@ -221,51 +221,68 @@ app.use("/api/v1", reviewRouter);
 
 /* ---------------------------- GOOGLE AUTH ---------------------------- */
 
-app.get(
-  "/auth/google",
+// The frontend sends the page to return to; it's carried through Google as the OAuth
+// `state` and only honoured for origins on the CORS allow-list (no open redirect).
+const safeRedirect = (raw: unknown): string | null => {
+  try {
+    const url = new URL(String(raw));
+    return allowedOrigins.includes(url.origin) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+};
+
+const encodeOAuthState = (redirect: string) =>
+  Buffer.from(JSON.stringify({ r: redirect })).toString("base64url");
+
+const decodeOAuthState = (state: unknown): string | null => {
+  try {
+    return safeRedirect(JSON.parse(Buffer.from(String(state), "base64url").toString()).r);
+  } catch {
+    return null;
+  }
+};
+
+app.get("/auth/google", (req: Request, res: Response, next: NextFunction) => {
+  const redirect = safeRedirect(req.query.redirect);
   passport.authenticate("google", {
     session: false,
     scope: ["profile", "email"],
-  })
-);
+    prompt: "select_account",
+    ...(redirect && { state: encodeOAuthState(redirect) }),
+  })(req, res, next);
+});
 
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    failureRedirect: `${process.env.FRONTEND_HOST}/signin`,
-  }),
-  (req, res) => {
-    const { accessToken, refreshToken } = req.user as any;
+app.get("/auth/google/callback", (req: Request, res: Response, next: NextFunction) => {
+  const redirect = decodeOAuthState(req.query.state);
+  const frontendHost = process.env.FRONTEND_HOST || "http://localhost:3000";
 
-    res.cookie(
-      "access_token",
-      accessToken,
-      accessTokenOptions
-    );
+  passport.authenticate("google", { session: false }, (err: unknown, result: any) => {
+    if (err || !result) {
+      console.log("Google sign-in failed:", err);
+      const failure = new URL("/login", redirect ? new URL(redirect).origin : frontendHost);
+      failure.searchParams.set("error", "google");
+      return res.redirect(failure.toString());
+    }
 
-    res.cookie(
-      "refresh_token",
-      refreshToken,
-      refreshTokenOptions
-    );
+    res.cookie("access_token", result.accessToken, accessTokenOptions);
+    res.cookie("refresh_token", result.refreshToken, refreshTokenOptions);
 
-    const frontendHost =
-      process.env.FRONTEND_HOST ||
-      "http://localhost:3000";
+    if (redirect) return res.redirect(redirect);
 
+    // Legacy popup flow (older frontends)
     res.send(
       `<script>
         if (window.opener) {
           window.opener.postMessage({ success: true }, '*');
           window.close();
         } else {
-          window.location.href = '${frontendHost}';
+          window.location.href = ${JSON.stringify(frontendHost)};
         }
       </script>`
     );
-  }
-);
+  })(req, res, next);
+});
 
 /* ---------------------------- TEST ROUTES ---------------------------- */
 

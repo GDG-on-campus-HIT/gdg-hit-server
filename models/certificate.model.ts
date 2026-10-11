@@ -3,7 +3,10 @@ import mongoose, { Document, Model, ObjectId, Schema } from "mongoose";
 interface ICertificate extends Document {
   event: ObjectId;
   user: ObjectId;
-  registration: ObjectId;
+  registration?: ObjectId;
+  participant?: ObjectId;
+  kind: "participation" | "winner";
+  position?: number | null;
   certificate: {
     public_id: string;
     url: string;
@@ -25,10 +28,25 @@ const certificateSchema = new Schema<ICertificate>(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
+    // Legacy certificates point at EventRegistration; new ones at Participant
     registration: {
-      required: true,
       type: Schema.Types.ObjectId,
       ref: "EventRegistration",
+    },
+    participant: {
+      type: Schema.Types.ObjectId,
+      ref: "Participant",
+    },
+    kind: {
+      type: String,
+      enum: ["participation", "winner"],
+      default: "participation",
+    },
+    position: {
+      type: Number,
+      min: 1,
+      max: 3,
+      default: null,
     },
     certificate: {
       public_id: String,
@@ -51,6 +69,11 @@ const certificateSchema = new Schema<ICertificate>(
     }
   },
   { timestamps: true }
+);
+
+certificateSchema.index(
+  { event: 1, participant: 1 },
+  { unique: true, partialFilterExpression: { participant: { $type: "objectId" } } }
 );
 
 const certificateModel: Model<ICertificate> = mongoose.model(

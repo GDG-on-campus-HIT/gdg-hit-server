@@ -8,6 +8,7 @@ import {
   softDeleteBlog,
   getAllBlogsAdmin,
   adminSoftDeleteBlog,
+  getBlogByIdAdmin,
 } from "../controllers/blog.controller";
 import { isAuthenticate, authorizeRoles } from "../middleware/auth";
 import upload from "../middleware/upload"; // 👈 Import multer upload middleware
@@ -48,8 +49,15 @@ blogRouter.patch(
 blogRouter.get(
   "/admin/allBlogs",
   isAuthenticate,
-  authorizeRoles("super_domain_admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   getAllBlogsAdmin
+);
+
+blogRouter.get(
+  "/admin/blog/:id",
+  isAuthenticate,
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
+  getBlogByIdAdmin
 );
 
 blogRouter.patch(

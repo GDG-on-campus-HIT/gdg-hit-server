@@ -1,5 +1,6 @@
 require("dotenv").config();
 import mongoose, { Document, Schema, Model, ObjectId } from "mongoose";
+import { certificateTemplateSchema, ICertificateTemplate } from "./certificateDesign.schema";
 
 interface IContactInfo {
   name: string;
@@ -44,6 +45,7 @@ interface IEvent extends Document {
     mobile: string;
     year: string;
   }>;
+  certificateTemplate?: ICertificateTemplate;
 }
 
 const eventSchema = new Schema<IEvent>(
@@ -132,6 +134,8 @@ const eventSchema = new Schema<IEvent>(
         year: { type: String, required: true },
       },
     ],
+    // Only loaded where needed (.select("+certificateTemplate")) to keep public event payloads small
+    certificateTemplate: { type: certificateTemplateSchema, select: false },
   },
   { timestamps: true }
 );

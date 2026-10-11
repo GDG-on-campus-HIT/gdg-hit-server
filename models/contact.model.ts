@@ -6,6 +6,7 @@ interface IContact extends Document {
   email: string;
   mobile_number: number;
   message: string;
+  isRead: boolean;
 }
 
 const contactSchema = new Schema<IContact>(
@@ -25,6 +26,10 @@ const contactSchema = new Schema<IContact>(
     message: {
       type: String,
       required: true,
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

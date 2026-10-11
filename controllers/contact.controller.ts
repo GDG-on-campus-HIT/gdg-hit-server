@@ -46,7 +46,7 @@ export const addContact = CatchAsyncError(
 export const getContacts = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const contacts = await contactModel.find();
+      const contacts = await contactModel.find().sort({ createdAt: -1 });
       res.status(200).json({
         success: true,
         contacts,
@@ -83,7 +83,7 @@ export const updateContact = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const contactId = req.params.id;
-      const { name, email, mobile_number, message } = req.body;
+      const { name, email, mobile_number, message, isRead } = req.body;
 
       const contact = await contactModel.findById(contactId);
       if (!contact) {
@@ -95,6 +95,7 @@ export const updateContact = CatchAsyncError(
       if (email) contact.email = email;
       if (mobile_number) contact.mobile_number = mobile_number;
       if (message) contact.message = message;
+      if (typeof isRead === "boolean") contact.isRead = isRead;
 
       await contact.save();
 

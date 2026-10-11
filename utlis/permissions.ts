@@ -17,6 +17,7 @@ const PERMISSION_ROLES: Record<string, string[]> = {
   "events.read": ADMIN,
   "events.write": SUPER,
   "events.registrations.manage": ADMIN,
+  "events.check_in": ADMIN,
 
   "recruitment.forms.manage": ADMIN,
   "recruitment.review": ADMIN,
@@ -27,6 +28,7 @@ const PERMISSION_ROLES: Record<string, string[]> = {
 
   "blogs.write": ADMIN,
   "blogs.moderate": SUPER,
+  "testimonials.manage": ADMIN,
 
   "users.read": SUPER,
   "messages.read": SUPER,

@@ -48,6 +48,26 @@ export const getAllMemberIdCards = CatchAsyncError(
   }
 );
 
+// Get all member ID cards including inactive ones (Admin only)
+export const getAllMemberIdCardsAdmin = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const idCards = await membersIdCardModel
+        .find()
+        .populate("memberId", "name email_id department designation profile_image")
+        .sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        count: idCards.length,
+        idCards,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
 // Auto-generate card number helper function
 const generateCardNumber = async (rollNo: string): Promise<string> => {
   // Extract first 2 digits from roll number (e.g., "22/CSE-DS/021" -> "22")

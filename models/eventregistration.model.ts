@@ -58,6 +58,9 @@ interface IParticipant extends Document {
   department: string;
   phoneNumber: string;
   email: string;
+  attendance: boolean;
+  position?: number | null;
+  checkedInAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,11 +106,29 @@ const ParticipantSchema: Schema = new Schema(
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
     },
+    attendance: {
+      type: Boolean,
+      default: false,
+    },
+    // Competition placement (1st/2nd/3rd); null for regular participants
+    position: {
+      type: Number,
+      min: 1,
+      max: 3,
+      default: null,
+    },
+    // Set when a member scans the participant's check-in pass at the venue
+    checkedInAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt
   }
 );
+
+ParticipantSchema.index({ event: 1 });
 
 
 // Create and export the PriorKnowledge model

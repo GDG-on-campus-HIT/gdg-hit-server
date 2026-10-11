@@ -264,3 +264,97 @@ export const checkIfRegistered = CatchAsyncError(
     }
   }
 );
+
+// Mark participants present/absent (bulk)
+export const setParticipantAttendance = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { eventId } = req.params;
+    const { participantIds, attendance } = req.body as { participantIds?: unknown; attendance?: unknown };
+
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return next(new ErrorHandler("Invalid event ID.", 400));
+    }
+    if (!Array.isArray(participantIds) || typeof attendance !== "boolean") {
+      return next(new ErrorHandler("participantIds (array) and attendance (boolean) are required.", 400));
+    }
+
+    const ids = participantIds.filter((id): id is string => typeof id === "string" && mongoose.Types.ObjectId.isValid(id));
+    const update = attendance ? { attendance } : { attendance, checkedInAt: null };
+    const result = await Participant.updateMany({ event: eventId, _id: { $in: ids } }, { $set: update });
+
+    res.status(200).json({ success: true, updated: result.modifiedCount });
+  }
+);
+
+// Mark participants present from a pasted list of emails or roll numbers
+export const markAttendanceFromList = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { eventId } = req.params;
+    const { identifiers } = req.body as { identifiers?: unknown };
+
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return next(new ErrorHandler("Invalid event ID.", 400));
+    }
+    if (!Array.isArray(identifiers)) {
+      return next(new ErrorHandler("identifiers must be an array.", 400));
+    }
+
+    const wanted = new Map<string, string>();
+    for (const raw of identifiers) {
+      const value = String(raw ?? "").trim();
+      if (value) wanted.set(value.toLowerCase(), value);
+    }
+
+    const participants = await Participant.find({ event: eventId }).select("email classRollNo attendance");
+    const matchedIds: string[] = [];
+    const matchedKeys = new Set<string>();
+
+    for (const p of participants) {
+      const keys = [p.email?.toLowerCase(), p.classRollNo?.trim().toLowerCase()].filter(Boolean) as string[];
+      const hit = keys.find((k) => wanted.has(k));
+      if (hit) {
+        matchedIds.push(String(p._id));
+        keys.forEach((k) => wanted.has(k) && matchedKeys.add(k));
+      }
+    }
+
+    const result = matchedIds.length
+      ? await Participant.updateMany({ _id: { $in: matchedIds } }, { $set: { attendance: true } })
+      : { modifiedCount: 0 };
+
+    res.status(200).json({
+      success: true,
+      matched: matchedIds.length,
+      updated: result.modifiedCount,
+      unmatched: [...wanted.entries()].filter(([k]) => !matchedKeys.has(k)).map(([, v]) => v),
+    });
+  }
+);
+
+// Set or clear a participant's competition position (1st/2nd/3rd)
+export const setParticipantPosition = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { eventId, participantId } = req.params;
+    const { position } = req.body as { position?: unknown };
+
+    if (!mongoose.Types.ObjectId.isValid(eventId) || !mongoose.Types.ObjectId.isValid(participantId)) {
+      return next(new ErrorHandler("Invalid ID.", 400));
+    }
+    if (position !== null && ![1, 2, 3].includes(Number(position))) {
+      return next(new ErrorHandler("Position must be 1, 2, 3 or null.", 400));
+    }
+
+    const update = position === null ? { position: null } : { position: Number(position), attendance: true };
+    const participant = await Participant.findOneAndUpdate(
+      { _id: participantId, event: eventId },
+      { $set: update },
+      { new: true }
+    );
+
+    if (!participant) {
+      return next(new ErrorHandler("Participant not found for this event.", 404));
+    }
+
+    res.status(200).json({ success: true, participant });
+  }
+);

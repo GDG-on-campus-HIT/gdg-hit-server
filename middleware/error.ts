@@ -42,6 +42,20 @@ export const ErrorMiddleware = (
     err = new ErrorHandler(message, 400);
   }
 
+  if (err.name === "MulterError") {
+    const message =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "That file is too large to upload."
+        : err.code === "LIMIT_UNEXPECTED_FILE"
+          ? `Unexpected upload field "${err.field}".`
+          : err.message;
+    err = new ErrorHandler(message, err.code === "LIMIT_FILE_SIZE" ? 413 : 400);
+  }
+
+  if (err.statusCode >= 500) {
+    console.error(`[${req.method} ${req.originalUrl}]`, err);
+  }
+
   // Send response with status code and message
   res.status(err.statusCode).json({
     success: false,

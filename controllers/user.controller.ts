@@ -217,21 +217,11 @@ export const loginUser = CatchAsyncError(
 export const logoutUser = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Clear cookies
-      res.cookie("access_token", "", {
-        maxAge: 1,
-        httpOnly: false,
-        sameSite: "none",
-        secure: true,
-        ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
-      });
-      res.cookie("refresh_token", "", {
-        maxAge: 1,
-        httpOnly: false,
-        sameSite: "none",
-        secure: true,
-        ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
-      });
+      // Clear cookies with the same attributes they were set with
+      const { expires: _ae, maxAge: _am, ...accessCookie } = accessTokenOptions;
+      const { expires: _re, maxAge: _rm, ...refreshCookie } = refreshTokenOptions;
+      res.clearCookie("access_token", accessCookie);
+      res.clearCookie("refresh_token", refreshCookie);
 
       // Delete user session from Redis
       const userId = req.user?._id?.toString() || "";

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
+import { certificateCheckUrl, certificateFileUrl } from "../utlis/certificateRenderer";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { eventModel, eventRegistrationModel } from "../models/events.model";
 import userModel from "../models/user.model";
@@ -254,6 +255,17 @@ export const deleteCertificate = CatchAsyncError(
         return next(new ErrorHandler("Certificate not found.", 404));
       }
 
+      if (certificate.certificate?.public_id) {
+        await cloudinary.v2.uploader
+          .destroy(certificate.certificate.public_id)
+          .catch((error) => console.log("Error deleting certificate file:", error));
+      }
+
+      await eventRegistrationModel.updateOne(
+        { _id: certificate.registration, certificate: certificate._id },
+        { $unset: { certificate: 1 } }
+      );
+
       await certificateModel.findByIdAndDelete(certificateId);
 
       res.status(200).json({
@@ -273,9 +285,12 @@ export const getAllCertificates = CatchAsyncError(
     try {
       const certificates = await certificateModel
         .find()
-        .populate("event") // Populate event information
-        .populate("user") // Populate user information
-        .populate("registration"); // Populate registration information
+        .sort({ createdAt: -1 })
+        .populate({ path: "event", select: "_id name eventDate" })
+        .populate({ path: "user", select: "_id name email" })
+        .populate({ path: "registration", select: "_id classRollNo department" })
+        .populate({ path: "participant", select: "_id name email classRollNo department attendance position" })
+        .lean();
 
       res.status(200).json({
         success: true,
@@ -291,32 +306,30 @@ export const getAllCertificates = CatchAsyncError(
 
 export const getMyCertificates = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user?._id; // Assuming user ID is available in req.user
+    const certificates: any[] = await certificateModel
+      .find({ user: req.user?._id })
+      .sort({ createdAt: -1 })
+      .populate({ path: "event", select: "_id name eventDate" })
+      .lean();
 
-      // Find certificates that belong to the logged-in user
-      const certificates = await certificateModel
-        .find({ user: userId })
-        .populate({ path: "event", select: "_id name eventDate description" }) // Populate event details
-        .populate({ path: "registration", select: "_id rollNo department" }); // Populate registration details
-
-      // If no certificates are found for the user
-      if (!certificates || certificates.length === 0) {
-        return next(
-          new ErrorHandler("No certificates found for this user.", 404)
-        );
-      }
-
-      // Send response with certificates
-      res.status(200).json({
-        success: true,
-        certificates,
-      });
-    } catch (error: any) {
-      return next(
-        new ErrorHandler(error.message || "Failed to fetch certificates.", 500)
-      );
-    }
+    res.status(200).json({
+      success: true,
+      certificates: certificates.map((c) => {
+        const rendered = !!c.participant;
+        const viewUrl = rendered ? certificateFileUrl(req, c.verification_code) : c.certificate?.url || null;
+        return {
+          _id: c._id,
+          code: c.verification_code,
+          kind: c.kind || "participation",
+          position: c.position ?? null,
+          issuedAt: c.createdAt,
+          event: c.event ? { _id: c.event._id, name: c.event.name, eventDate: c.event.eventDate } : null,
+          viewUrl,
+          downloadUrl: rendered ? `${viewUrl}?download=1` : viewUrl,
+          verifyUrl: certificateCheckUrl(req, c.verification_code),
+        };
+      }),
+    });
   }
 );
 

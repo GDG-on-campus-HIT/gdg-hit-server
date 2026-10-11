@@ -1,5 +1,5 @@
 require('dotenv').config();
-import nodemailer ,{Transporter} from 'nodemailer';
+import nodemailer ,{Transporter, SendMailOptions} from 'nodemailer';
 import ejs from 'ejs';
 import path from 'path';
 
@@ -10,6 +10,7 @@ interface EmailOptions{
     subject:string;
     template:string;
     data: {[key:string]:any};
+    attachments?: SendMailOptions['attachments'];
 }
 
 const sendMail = async(options : EmailOptions): Promise <void> =>{
@@ -23,7 +24,7 @@ const sendMail = async(options : EmailOptions): Promise <void> =>{
         },
     });
 
-    const {email,subject,template,data} = options;
+    const {email,subject,template,data,attachments} = options;
 
     const html:string = template;
 
@@ -31,7 +32,8 @@ const sendMail = async(options : EmailOptions): Promise <void> =>{
         from: `"GDG on campus HIT" <recruitment@gdghit.site>`,
         to:email,
         subject,
-        html
+        html,
+        attachments
     };
 
     await transporter.sendMail(mailOptions);

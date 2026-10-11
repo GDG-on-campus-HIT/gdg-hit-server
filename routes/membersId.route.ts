@@ -5,6 +5,7 @@ import {
   createMemberIdCard,
   deleteMemberIdCard,
   getAllMemberIdCards,
+  getAllMemberIdCardsAdmin,
   getMemberIdCard,
   toggleIdCardStatus,
   updateMemberIdCard,
@@ -24,6 +25,7 @@ const requireObjectIdParam =
 
 // Namespaced routes (preferred)
 membersIdRouter.get("/member-id-cards", getAllMemberIdCards);
+membersIdRouter.get("/admin/member-id-cards", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), getAllMemberIdCardsAdmin);
 membersIdRouter.get("/member-id-cards/:memberId", requireObjectIdParam("memberId"), getMemberIdCard);
 membersIdRouter.post("/member-id-cards", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), createMemberIdCard);
 membersIdRouter.put("/member-id-cards/:id", isAuthenticate, authorizeRoles(...ID_CARD_ADMINS), updateMemberIdCard);

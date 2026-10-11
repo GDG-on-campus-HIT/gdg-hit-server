@@ -1,6 +1,7 @@
 import express from 'express';
-import { addPriorKnowledge, checkIfRegistered, getParticipant, getPriorKnowledge, registerParticipant } from '../controllers/eventregistration.controller';
+import { addPriorKnowledge, checkIfRegistered, getParticipant, getPriorKnowledge, markAttendanceFromList, registerParticipant, setParticipantAttendance, setParticipantPosition } from '../controllers/eventregistration.controller';
 import { authorizeRoles, isAuthenticate } from '../middleware/auth';
+import { checkInParticipant, checkInPassPage, checkInQrImage, getMyCheckInPass, getMyEvents, sendCheckInPass } from '../controllers/checkIn.controller';
 
 const eventRegistration = express.Router();
 
@@ -25,5 +26,52 @@ eventRegistration.get(
     checkIfRegistered
   );
 
+const PARTICIPANT_MANAGERS = ["domain_lead", "super_domain_admin", "super_admin"];
+
+eventRegistration.patch(
+    "/events/:eventId/participants/attendance",
+    isAuthenticate,
+    authorizeRoles(...PARTICIPANT_MANAGERS),
+    setParticipantAttendance
+);
+
+eventRegistration.patch(
+    "/events/:eventId/participants/attendance/from-list",
+    isAuthenticate,
+    authorizeRoles(...PARTICIPANT_MANAGERS),
+    markAttendanceFromList
+);
+
+eventRegistration.patch(
+    "/events/:eventId/participants/:participantId/position",
+    isAuthenticate,
+    authorizeRoles(...PARTICIPANT_MANAGERS),
+    setParticipantPosition
+);
+
+// Check-in passes (QR scanned at the venue)
+const CHECK_IN_STAFF = ["domain_lead", "super_domain_admin", "super_admin"];
+
+eventRegistration.post(
+    "/events/:eventId/check-in",
+    isAuthenticate,
+    authorizeRoles(...CHECK_IN_STAFF),
+    checkInParticipant
+);
+
+eventRegistration.post(
+    "/events/:eventId/participants/:participantId/send-pass",
+    isAuthenticate,
+    authorizeRoles(...PARTICIPANT_MANAGERS),
+    sendCheckInPass
+);
+
+eventRegistration.get("/events/:eventId/my-pass", isAuthenticate, getMyCheckInPass);
+
+eventRegistration.get("/check-in/pass/:token", checkInPassPage);
+
+eventRegistration.get("/check-in/qr/:token", checkInQrImage);
+
+eventRegistration.get("/my-events", isAuthenticate, getMyEvents);
 
 export default eventRegistration;

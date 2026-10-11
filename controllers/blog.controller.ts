@@ -8,38 +8,73 @@ import imagekit from "../utlis/imageKit";
 import fs from "fs";
 import { Types } from "mongoose";
 
+const MODERATOR_ROLES = ["super_domain_admin", "super_admin"];
+
+const isModerator = (req: Request) =>
+  MODERATOR_ROLES.includes((req.user as any)?.role || "");
+
+// Multipart bodies send everything as strings.
+const parseBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+};
+
+const parseTags = (value: unknown): string[] | undefined => {
+  if (value === undefined) return undefined;
+  let raw: unknown = value;
+  if (typeof value === "string") {
+    try {
+      raw = JSON.parse(value);
+    } catch {
+      raw = value.split(",");
+    }
+  }
+  if (!Array.isArray(raw)) return undefined;
+  return raw
+    .map((tag) => String(tag).trim().toLowerCase())
+    .filter(Boolean);
+};
+
+const uploadBlogImage = async (file: Express.Multer.File) => {
+  try {
+    const uploaded = await imagekit.upload({
+      file: fs.readFileSync(file.path),
+      fileName: file.originalname,
+      folder: "blogs",
+    });
+    return uploaded.url;
+  } finally {
+    fs.unlink(file.path, () => {});
+  }
+};
+
+const canEditBlog = (req: Request, blog: { authorId: unknown }) =>
+  isModerator(req) ||
+  String(blog.authorId) === String((req.user as any)?._id);
+
 export const addBlog = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const {
-      category,
-      title,
-      description,
-      content,
-      tags,
-      isPublished,
-      authorId,
-    } = req.body;
+    const { category, title, description, content } = req.body;
+    const authorId = (req.user as any)?._id;
 
-    if (!title || !description || !content || !authorId || !req.file) {
+    if (!title || !description || !content || !category || !req.file) {
+      if (req.file) fs.unlink(req.file.path, () => {});
       return next(new ErrorHandler("All required fields must be filled.", 400));
     }
 
     const slug = slugify(title, { lower: true, strict: true });
     const existing = await Blog.findOne({ slug });
     if (existing) {
+      fs.unlink(req.file.path, () => {});
       return next(
         new ErrorHandler("Blog with this title already exists.", 409)
       );
     }
 
-    const fileBuffer = fs.readFileSync(req.file.path);
-    const uploaded = await imagekit.upload({
-      file: fileBuffer,
-      fileName: req.file.originalname,
-      folder: "blogs",
-    });
-
-    fs.unlinkSync(req.file.path);
+    const imageUrl = await uploadBlogImage(req.file);
+    const isPublished = parseBoolean(req.body.isPublished) ?? false;
 
     const newBlog = await Blog.create({
       category,
@@ -47,11 +82,11 @@ export const addBlog = CatchAsyncError(
       slug,
       description,
       content,
-      imageUrl: uploaded.url,
-      tags,
+      imageUrl,
+      tags: parseTags(req.body.tags) ?? [],
       isPublished,
-      authorId: authorId,
-      publishedAt: isPublished ? new Date() : null,
+      authorId,
+      publishedAt: isPublished ? new Date() : undefined,
     });
 
     res.status(201).json({ success: true, blog: newBlog });
@@ -114,19 +149,19 @@ export const getAllBlogs = CatchAsyncError(
 export const updateBlog = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
     const blogId = req.params.id;
-    const {
-      category,
-      title,
-      description,
-      content,
-      imageUrl,
-      tags,
-      isPublished,
-    } = req.body;
+    const { category, title, description, content, imageUrl } = req.body;
 
     const blog = await Blog.findById(blogId);
     if (!blog) {
+      if (req.file) fs.unlink(req.file.path, () => {});
       return next(new ErrorHandler("Blog post not found.", 404));
+    }
+
+    if (!canEditBlog(req, blog)) {
+      if (req.file) fs.unlink(req.file.path, () => {});
+      return next(
+        new ErrorHandler("You can only edit blogs you wrote.", 403)
+      );
     }
 
     if (title && title !== blog.title) {
@@ -137,6 +172,7 @@ export const updateBlog = CatchAsyncError(
       });
 
       if (existingSlug) {
+        if (req.file) fs.unlink(req.file.path, () => {});
         return next(
           new ErrorHandler("A blog with this title already exists.", 409)
         );
@@ -149,14 +185,25 @@ export const updateBlog = CatchAsyncError(
     if (category !== undefined) blog.category = category;
     if (description !== undefined) blog.description = description;
     if (content !== undefined) blog.content = content;
-    if (imageUrl !== undefined) blog.imageUrl = imageUrl;
-    if (tags && Array.isArray(tags)) {
-      blog.tags = tags.map((tag: string) => tag.trim().toLowerCase());
+
+    if (req.file) {
+      blog.imageUrl = await uploadBlogImage(req.file);
+    } else if (imageUrl !== undefined) {
+      blog.imageUrl = imageUrl;
     }
 
-    if (typeof isPublished === "boolean") {
+    const tags = parseTags(req.body.tags);
+    if (tags) blog.tags = tags;
+
+    const isPublished = parseBoolean(req.body.isPublished);
+    if (isPublished !== undefined && isPublished !== blog.isPublished) {
       blog.isPublished = isPublished;
       blog.publishedAt = isPublished ? new Date() : undefined;
+    }
+
+    const isListed = parseBoolean(req.body.isListed);
+    if (isListed !== undefined && isModerator(req)) {
+      blog.isListed = isListed;
     }
 
     await blog.save();
@@ -178,6 +225,12 @@ export const softDeleteBlog = CatchAsyncError(
       return next(new ErrorHandler("Blog post not found.", 404));
     }
 
+    if (!canEditBlog(req, blog)) {
+      return next(
+        new ErrorHandler("You can only unlist blogs you wrote.", 403)
+      );
+    }
+
     blog.isListed = false;
     await blog.save();
 
@@ -188,10 +241,11 @@ export const softDeleteBlog = CatchAsyncError(
   }
 );
 
-// Admin: Get all blogs (regardless of status)
+// Admin: Get all blogs (regardless of status). Domain leads only see their own.
 export const getAllBlogsAdmin = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
-    const blogs = await Blog.find()
+    const filter = isModerator(req) ? {} : { authorId: (req.user as any)?._id };
+    const blogs = await Blog.find(filter)
       .sort({ createdAt: -1 })
       .populate("authorId", "name email");
 
@@ -200,6 +254,23 @@ export const getAllBlogsAdmin = CatchAsyncError(
       blogs,
       message: "All blogs fetched successfully (admin).",
     });
+  }
+);
+
+// Admin: Get a blog by ID regardless of listed/published status
+export const getBlogByIdAdmin = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!Types.ObjectId.isValid(req.params.id)) {
+      return next(new ErrorHandler("Invalid blog ID.", 400));
+    }
+
+    const blog = await Blog.findById(req.params.id);
+    if (!blog || !canEditBlog(req, blog)) {
+      return next(new ErrorHandler("Blog post not found.", 404));
+    }
+
+    await blog.populate("authorId", "name email");
+    res.status(200).json({ success: true, blog });
   }
 );
 
