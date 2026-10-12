@@ -11,6 +11,13 @@ const site = new URL(siteUrl);
 const rootHostname = site.hostname.replace(/^www\./, "");
 const isLocalSite = rootHostname === "localhost" || /^[\d.]+$/.test(rootHostname);
 
+if (process.env.NODE_ENV === "production" && isLocalSite) {
+  console.warn(
+    `[site] FRONTEND_HOST is "${siteUrl}" in production. Set it to the live website URL ` +
+      "(e.g. https://gdghit.dev) or browsers on the site will be blocked by CORS."
+  );
+}
+
 /** Host shown to people, e.g. "gdghit.dev". */
 export const siteHost = site.host.replace(/^www\./, "");
 
