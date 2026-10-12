@@ -6,7 +6,7 @@ import { PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
-import sendMail from "../utlis/sendMail";
+import sendMail, { describeMailError } from "../utlis/sendMail";
 import { eventModel } from "../models/events.model";
 import { Participant } from "../models/eventregistration.model";
 import { certificateModel } from "../models/certificate.model";
@@ -608,8 +608,8 @@ export const sendCertificateEmail = CatchAsyncError(async (req: Request, res: Re
   try {
     await sendMail({ email, subject: `Your certificate for ${eventName}`, template: html, data: {} });
   } catch (error) {
-    console.log("Certificate email failed:", error);
-    return next(new ErrorHandler("Couldn't send the email. Check the SMTP settings.", 502));
+    console.error("Certificate email failed:", error);
+    return next(new ErrorHandler(`Couldn't send the email: ${describeMailError(error)}`, 502));
   }
 
   cert.mail_sent = true;

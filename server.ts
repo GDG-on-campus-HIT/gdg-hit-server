@@ -2,6 +2,7 @@
 import { app } from "./app";
 require("dotenv").config();
 import connectDB from "./utlis/db";
+import { verifyMailTransport } from "./utlis/sendMail";
 import { v2 as cloudinary } from "cloudinary";
 
 // cloudinary config
@@ -14,4 +15,5 @@ cloudinary.config({
 app.listen(8080, () => {
   console.log(`server is connected with port ${process.env.PORT}`);
   connectDB();
+  verifyMailTransport();
 });

@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import QRCode from "qrcode";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import ErrorHandler from "../utlis/ErrorHandler";
-import sendMail from "../utlis/sendMail";
+import sendMail, { describeMailError } from "../utlis/sendMail";
 import { eventModel } from "../models/events.model";
 import { Participant } from "../models/eventregistration.model";
 import { certificateModel } from "../models/certificate.model";
@@ -308,7 +308,7 @@ export const sendCheckInPass = CatchAsyncError(async (req: Request, res: Respons
 
   const token = checkInToken(participantId);
   const passUrl = checkInPassUrl(req, token);
-  const qrPng = await QRCode.toBuffer(token, { ...qrOptions, width: 480 });
+  const qrUrl = `${checkInQrUrl(req, token)}?format=png`;
   const when = formatEventDate((event as any).eventDate);
   const venue = (event as any).venue;
 
@@ -318,7 +318,7 @@ export const sendCheckInPass = CatchAsyncError(async (req: Request, res: Respons
       <tr><td style="padding:28px 32px 0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#71717a">GDG on Campus HIT</td></tr>
       <tr><td style="padding:12px 32px 8px"><h1 style="margin:0;font-size:22px">Your entry pass, ${escapeHtml(participant.name)}</h1></td></tr>
       <tr><td style="padding:0 32px;font-size:15px;line-height:1.6">Show this QR code at the entrance of <strong>${escapeHtml(event.name)}</strong>${when ? ` on <strong>${escapeHtml(when)}</strong>` : ""}${venue ? ` at ${escapeHtml(venue)}` : ""}. A GDG member will scan it to mark your attendance — you need to be marked present to receive your certificate.</td></tr>
-      <tr><td align="center" style="padding:24px 32px 8px"><img src="cid:checkin-qr" width="240" height="240" alt="Check-in QR code" style="display:block;border:1px solid #e4e4e7;border-radius:12px"></td></tr>
+      <tr><td align="center" style="padding:24px 32px 8px"><img src="${escapeHtml(qrUrl)}" width="240" height="240" alt="Check-in QR code" style="display:block;border:1px solid #e4e4e7;border-radius:12px"></td></tr>
       <tr><td align="center" style="padding:8px 32px 28px"><a href="${escapeHtml(passUrl)}" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:10px">Open pass on your phone</a></td></tr>
       <tr><td style="padding:20px 32px;background:#fafafa;font-size:12px;color:#71717a">Don't share this pass — it's unique to your registration.</td></tr>
     </table>
@@ -330,11 +330,10 @@ export const sendCheckInPass = CatchAsyncError(async (req: Request, res: Respons
       subject: `Your entry pass for ${event.name}`,
       template: html,
       data: {},
-      attachments: [{ filename: "entry-pass.png", content: qrPng, cid: "checkin-qr" }],
     });
   } catch (error) {
-    console.log("Check-in pass email failed:", error);
-    return next(new ErrorHandler("Couldn't send the email. Check the SMTP settings.", 502));
+    console.error("Check-in pass email failed:", error);
+    return next(new ErrorHandler(`Couldn't send the email: ${describeMailError(error)}`, 502));
   }
 
   res.status(200).json({ success: true, message: `Pass emailed to ${participant.email}` });
@@ -477,7 +476,12 @@ export const checkInQrImage = CatchAsyncError(async (req: Request, res: Response
   const token = String(req.params.token || "");
   if (!parseCheckInToken(token)) return next(new ErrorHandler("Invalid pass.", 404));
 
-  const svg = await QRCode.toString(token, { ...qrOptions, type: "svg" });
   res.setHeader("Cache-Control", "private, max-age=86400");
+  // Email clients (Gmail included) don't render SVG, so emails ask for PNG.
+  if (req.query.format === "png") {
+    const png = await QRCode.toBuffer(token, { ...qrOptions, width: 480 });
+    return res.type("image/png").send(png);
+  }
+  const svg = await QRCode.toString(token, { ...qrOptions, type: "svg" });
   res.type("image/svg+xml").send(svg);
 });
