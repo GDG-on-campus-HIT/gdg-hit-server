@@ -29,7 +29,7 @@ const sendMail = async(options : EmailOptions): Promise <void> =>{
     const html:string = template;
 
     const mailOptions = {
-        from: `"GDG on campus HIT" <recruitment@gdghit.site>`,
+        from: `"GDG on campus HIT" <${process.env.SMTP_MAIL}>`,
         to:email,
         subject,
         html,

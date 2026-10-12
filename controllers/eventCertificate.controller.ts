@@ -21,8 +21,10 @@ import {
   CertificateTokenData,
   SAMPLE_DATA,
   STANDARD_FONTS,
+  STORED_CERTIFICATE_FOLDER,
   certificateCheckUrl,
   certificateFileUrl,
+  certificateQrUrl,
   escapeHtml,
   formatEventDate,
   renderCertificatePdf,
@@ -100,9 +102,15 @@ const assetIds = (template?: ICertificateTemplate | null) => {
   return { images, raws };
 };
 
-const uploadBuffer = async (buffer: Buffer, fileName: string, folder: string) => {
+const uploadBuffer = async (buffer: Buffer, fileName: string, folder: string, fixedName = false) => {
   try {
-    return await imagekit.upload({ file: buffer, fileName, folder, useUniqueFileName: true });
+    return await imagekit.upload({
+      file: buffer,
+      fileName,
+      folder,
+      useUniqueFileName: !fixedName,
+      ...(fixedName && { overwriteFile: true }),
+    } as Parameters<typeof imagekit.upload>[0]);
   } catch (error: any) {
     console.error("ImageKit upload failed:", error);
     throw new ErrorHandler(
@@ -133,8 +141,48 @@ const tokenData = (req: Request, cert: any, event: any, participant: any): Certi
   department: participant?.department || "",
   email: participant?.email || cert.user?.email || "",
   code: cert.verification_code,
-  verifyUrl: certificateCheckUrl(req, cert.verification_code),
+  verifyUrl: certificateQrUrl(req, cert.verification_code),
 });
+
+const timeOf = (value?: Date | string | null) => (value ? new Date(value).getTime() || 0 : 0);
+
+// A stored PDF is stale once the design or the participant's details change after it was rendered.
+const hasFreshStoredFile = (cert: any, event: any) => {
+  const renderedAt = timeOf(cert.certificate?.rendered_at);
+  return (
+    !!renderedAt &&
+    !!cert.certificate?.url &&
+    renderedAt >= timeOf(event?.certificateTemplate?.updatedAt) &&
+    renderedAt >= timeOf(cert.participant?.updatedAt)
+  );
+};
+
+const storeCertificateFile = async (req: Request, cert: any, event: any) => {
+  const design = designFor(event.certificateTemplate, cert.kind);
+  if (!design?.background?.url) throw new Error("This event has no certificate design.");
+
+  const renderedAt = new Date();
+  const bytes = await renderCertificatePdf([{ design, data: tokenData(req, cert, event, cert.participant) }]);
+  const upload = await uploadBuffer(Buffer.from(bytes), `${cert.verification_code}.pdf`, STORED_CERTIFICATE_FOLDER, true);
+  if (cert.certificate?.public_id) {
+    imagekit.purgeCache(upload.url).catch(() => {});
+  }
+
+  await certificateModel.updateOne(
+    { _id: cert._id },
+    { $set: { certificate: { public_id: upload.fileId, url: upload.url, rendered_at: renderedAt } } },
+    { timestamps: false }
+  );
+};
+
+const runWithConcurrency = async <T>(items: T[], limit: number, worker: (item: T) => Promise<void>) => {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) await worker(items[next++]);
+    })
+  );
+};
 
 const loadEvent = async (eventId: string, next: NextFunction) => {
   if (!isObjectId(eventId)) {
@@ -348,6 +396,7 @@ export const issueEventCertificates = CatchAsyncError(async (req: Request, res: 
       if (cert.kind !== kind || (cert.position ?? null) !== position) {
         cert.kind = kind;
         cert.position = position;
+        cert.set("certificate.rendered_at", null);
         await cert.save();
         updated++;
       }
@@ -362,7 +411,7 @@ export const issueEventCertificates = CatchAsyncError(async (req: Request, res: 
       kind,
       position,
       verification_code: code,
-      certificate: { public_id: "", url: certificateFileUrl(req, code) },
+      certificate: { public_id: "", url: "", rendered_at: null },
     });
   }
 
@@ -376,14 +425,36 @@ export const issueEventCertificates = CatchAsyncError(async (req: Request, res: 
     }
   }
 
-  res.status(200).json({
-    success: true,
-    created,
-    updated,
-    message: created || updated
-      ? `Issued ${created} new certificate${created === 1 ? "" : "s"}${updated ? `, updated ${updated}` : ""}.`
-      : "Everyone marked present already has a certificate.",
+  const issued = await certificateModel
+    .find({ event: event._id, participant: { $type: "objectId" } })
+    .populate("participant")
+    .populate({ path: "user", select: "name email" })
+    .lean();
+  const toStore = issued.filter((cert: any) => cert.participant && !hasFreshStoredFile(cert, event));
+
+  let stored = 0;
+  let failed = 0;
+  await runWithConcurrency(toStore, 4, async (cert) => {
+    try {
+      await storeCertificateFile(req, cert, event);
+      stored++;
+    } catch (error) {
+      failed++;
+      console.error(`Certificate ${cert.verification_code} couldn't be stored:`, error);
+    }
   });
+
+  const parts = [
+    created && `issued ${created} new certificate${created === 1 ? "" : "s"}`,
+    updated && `updated ${updated}`,
+    stored && `generated ${stored} PDF${stored === 1 ? "" : "s"}`,
+    failed && `${failed} PDF${failed === 1 ? "" : "s"} couldn't be generated — try again`,
+  ].filter(Boolean) as string[];
+  const message = parts.length
+    ? `${parts.join(", ").replace(/^./, (c) => c.toUpperCase())}.`
+    : "Everyone marked present already has an up-to-date certificate.";
+
+  res.status(200).json({ success: true, created, updated, stored, failed, message });
 });
 
 export const printEventCertificates = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
@@ -435,6 +506,11 @@ export const renderCertificateFile = CatchAsyncError(async (req: Request, res: R
       return res.redirect(cert.certificate.url);
     }
     return next(new ErrorHandler("Certificate file not available.", 404));
+  }
+
+  if (hasFreshStoredFile(cert, cert.event)) {
+    certificateModel.updateOne({ _id: cert._id }, { $inc: { download: 1 } }, { timestamps: false }).catch(() => {});
+    return res.redirect(req.query.download ? `${cert.certificate.url}?ik-attachment=true` : cert.certificate.url);
   }
 
   const design = designFor(cert.event?.certificateTemplate, cert.kind);
@@ -497,7 +573,7 @@ export const sendCertificateEmail = CatchAsyncError(async (req: Request, res: Re
     .findById(req.params.id)
     .populate("participant")
     .populate({ path: "user", select: "name email" })
-    .populate({ path: "event", select: "name eventDate" });
+    .populate({ path: "event", select: "+certificateTemplate name eventDate" });
   if (!cert) return next(new ErrorHandler("Certificate not found.", 404));
 
   const email = cert.participant?.email || cert.user?.email;
@@ -505,7 +581,12 @@ export const sendCertificateEmail = CatchAsyncError(async (req: Request, res: Re
   if (!email) return next(new ErrorHandler("This participant has no email address.", 400));
 
   const eventName = cert.event?.name || "our event";
-  const fileUrl = cert.participant ? certificateFileUrl(req, cert.verification_code) : cert.certificate?.url;
+  // Emails stay in inboxes for years, so prefer the stored file that outlives the yearly domain
+  const fileUrl = !cert.participant
+    ? cert.certificate?.url
+    : hasFreshStoredFile(cert, cert.event)
+      ? cert.certificate.url
+      : certificateFileUrl(req, cert.verification_code);
   const checkUrl = certificateCheckUrl(req, cert.verification_code);
   const achievement =
     cert.kind === "winner" && cert.position

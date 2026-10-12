@@ -3,6 +3,7 @@ import { IUser } from "../models/user.model";
 import { Response } from "express";
 import { cacheUserSession, toSafeUser } from "./session";
 import { getPermissionsForRole } from "./permissions";
+import { cookieDomain } from "./site";
 
 interface ITokenOptions {
     expires: Date;
@@ -29,7 +30,7 @@ export const accessTokenOptions: ITokenOptions = {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     hostOnly: false,
     secure: process.env.NODE_ENV === "production",
-    ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
+    ...(process.env.NODE_ENV === "production" && { domain: cookieDomain }),
 };
 
 export const refreshTokenOptions: ITokenOptions = {
@@ -39,7 +40,7 @@ export const refreshTokenOptions: ITokenOptions = {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     hostOnly: false,
     secure: process.env.NODE_ENV === "production",
-    ...(process.env.NODE_ENV === "production" && { domain: process.env.COOKIE_DOMAIN || ".gdghit.dev" }),
+    ...(process.env.NODE_ENV === "production" && { domain: cookieDomain }),
 };
 
 export const sendToken = (user: IUser, statusCode: number, res: Response) => {

@@ -13,6 +13,7 @@ import Jwt, { JwtPayload } from "jsonwebtoken";
 import "./config/google.strategy";
 import { ErrorMiddleware } from "./middleware/error";
 import { accessTokenOptions, refreshTokenOptions } from "./utlis/jwt";
+import { allowedOrigins, siteUrl } from "./utlis/site";
 
 // Routes
 import userRouter from "./routes/user.route";
@@ -53,30 +54,6 @@ app.set("trust proxy", parseInt(process.env.TRUST_PROXY_HOPS || "1", 10));
 app.use(cookieParser());
 
 /* ---------------------------- CORS ---------------------------- */
-
-const allowedOrigins = [
-  // Local development
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:3002",
-  "http://localhost:5173",
-  "http://localhost:5174",
-
-  // Old production domains
-  "https://gdghit.site",
-  "https://admin.gdghit.site",
-  "https://blog.gdghit.site",
-
-  // Vercel deployments
-  "https://gdg-hit-main-ffch.vercel.app",
-  "https://my-admin-panel-livid.vercel.app",
-
-  // Current production domains
-  "https://gdghit.dev",
-  "https://www.gdghit.dev",
-  "https://admin.gdghit.dev",
-  "https://blog.gdghit.dev",
-];
 
 const corsOptions = {
   origin: function (
@@ -255,7 +232,7 @@ app.get("/auth/google", (req: Request, res: Response, next: NextFunction) => {
 
 app.get("/auth/google/callback", (req: Request, res: Response, next: NextFunction) => {
   const redirect = decodeOAuthState(req.query.state);
-  const frontendHost = process.env.FRONTEND_HOST || "http://localhost:3000";
+  const frontendHost = siteUrl;
 
   passport.authenticate("google", { session: false }, (err: unknown, result: any) => {
     if (err || !result) {

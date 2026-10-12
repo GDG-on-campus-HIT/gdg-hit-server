@@ -29,7 +29,7 @@ mailRoute.post(
 mailRoute.post(
   "/sendPromotionMail",
   isAuthenticate,
-  authorizeRoles("super_domain_admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   sendPromotionMail
 );
 

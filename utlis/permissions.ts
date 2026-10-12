@@ -12,29 +12,30 @@ const PERMISSION_ROLES: Record<string, string[]> = {
   "dashboard.view": ADMIN,
 
   "members.read": ADMIN,
-  "members.write": SUPER,
+  "members.write": ADMIN,
 
   "events.read": ADMIN,
-  "events.write": SUPER,
+  "events.write": ADMIN,
   "events.registrations.manage": ADMIN,
   "events.check_in": ADMIN,
 
   "recruitment.forms.manage": ADMIN,
   "recruitment.review": ADMIN,
+  // Domain leads review applicants for their assigned domains only
   "recruitment.review.all_domains": SUPER,
 
   "certificates.manage": ADMIN,
   "id_cards.manage": ADMIN,
 
   "blogs.write": ADMIN,
-  "blogs.moderate": SUPER,
+  "blogs.moderate": ADMIN,
   "testimonials.manage": ADMIN,
 
-  "users.read": SUPER,
-  "messages.read": SUPER,
-  "reviews.moderate": SUPER,
-  "analytics.read": SUPER,
-  "mail.promotion.send": SUPER,
+  "users.read": ADMIN,
+  "messages.read": ADMIN,
+  "reviews.moderate": ADMIN,
+  "analytics.read": ADMIN,
+  "mail.promotion.send": ADMIN,
 
   "admins.manage": OWNER,
   "activity_logs.read": OWNER,

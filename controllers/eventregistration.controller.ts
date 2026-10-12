@@ -160,8 +160,15 @@ export const registerParticipant = async (req: Request, res: Response) => {
     }
 
     // Check if user is already registered for the event
-    const existingRegistration = await Participant.findOne({ user: userId, event: eventId });
+    const existingRegistration = await Participant.findOne({
+      event: eventId,
+      $or: [{ user: userId }, { user: null, email: String(email).trim().toLowerCase() }],
+    });
     if (existingRegistration) {
+      if (!existingRegistration.user) {
+        existingRegistration.user = new mongoose.Types.ObjectId(userId);
+        await existingRegistration.save();
+      }
       return res.status(200).json({
         message: 'User already registered for this event',
         registrationId: existingRegistration._id
@@ -279,7 +286,7 @@ export const setParticipantAttendance = CatchAsyncError(
     }
 
     const ids = participantIds.filter((id): id is string => typeof id === "string" && mongoose.Types.ObjectId.isValid(id));
-    const update = attendance ? { attendance } : { attendance, checkedInAt: null };
+    const update = attendance ? { attendance } : { attendance, checkedInAt: null, sessionCheckIns: [] };
     const result = await Participant.updateMany({ event: eventId, _id: { $in: ids } }, { $set: update });
 
     res.status(200).json({ success: true, updated: result.modifiedCount });

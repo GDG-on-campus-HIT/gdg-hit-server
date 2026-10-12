@@ -46,6 +46,7 @@ interface IEvent extends Document {
     year: string;
   }>;
   certificateTemplate?: ICertificateTemplate;
+  attendanceSessions: Array<{ key: string; label: string }>;
 }
 
 const eventSchema = new Schema<IEvent>(
@@ -136,6 +137,18 @@ const eventSchema = new Schema<IEvent>(
     ],
     // Only loaded where needed (.select("+certificateTemplate")) to keep public event payloads small
     certificateTemplate: { type: certificateTemplateSchema, select: false },
+    // Check-in rounds (e.g. before and after lunch). Empty = a single check-in.
+    // Participants count as present only after checking in to every session.
+    attendanceSessions: {
+      type: [
+        {
+          _id: false,
+          key: { type: String, required: true, trim: true, maxlength: 40 },
+          label: { type: String, required: true, trim: true, maxlength: 40 },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

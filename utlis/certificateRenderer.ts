@@ -6,6 +6,7 @@ import {
   ICertificateDesign,
   ICertificateField,
 } from "../models/certificateDesign.schema";
+import { siteUrl } from "./site";
 
 export const STANDARD_FONTS: Record<string, StandardFonts> = {
   Helvetica: StandardFonts.Helvetica,
@@ -57,7 +58,7 @@ export const SAMPLE_DATA: CertificateTokenData = {
   department: "Computer Science & Engineering",
   email: "aarav@example.com",
   code: "GDG-SAMPLE-0000",
-  verifyUrl: "https://gdghit.dev",
+  verifyUrl: siteUrl,
 };
 
 export const fillTokens = (text: string, data: CertificateTokenData) =>
@@ -103,6 +104,18 @@ export const certificateFileUrl = (req: Request, code: string) =>
 
 export const certificateCheckUrl = (req: Request, code: string) =>
   `${publicApiBase(req)}/api/v1/certificate/check/${encodeURIComponent(code)}`;
+
+// Issued certificates live on ImageKit at a path derived from the code, so the URL is known
+// before upload (it goes into the QR code) and survives the website changing domains.
+export const STORED_CERTIFICATE_FOLDER = "/certificates";
+
+export const storedCertificateUrl = (code: string) => {
+  const endpoint = (process.env.IMAGEKIT_URL_ENDPOINT || "").replace(/\/+$/, "");
+  return endpoint ? `${endpoint}${STORED_CERTIFICATE_FOLDER}/${encodeURIComponent(code)}.pdf` : null;
+};
+
+export const certificateQrUrl = (req: Request, code: string) =>
+  storedCertificateUrl(code) || certificateCheckUrl(req, code);
 
 // ImageKit may serve re-encoded (WebP/AVIF, lower quality) variants; pdf-lib needs the original PNG/JPG.
 const originalImageUrl = (url: string) => {

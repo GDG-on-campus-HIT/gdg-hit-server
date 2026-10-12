@@ -8,15 +8,15 @@ const contactRouter = express.Router();
 contactRouter.post('/contact', addContact);
 
 // Get all contact messages
-contactRouter.get('/contact', isAuthenticate,authorizeRoles("super_domain_admin", "super_admin"), getContacts);
+contactRouter.get('/contact', isAuthenticate,authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), getContacts);
 
 // Get a specific contact message by ID
-contactRouter.get('/contact/:id', isAuthenticate,authorizeRoles("super_domain_admin", "super_admin"), getContactById);
+contactRouter.get('/contact/:id', isAuthenticate,authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), getContactById);
 
 // Update a contact message
-contactRouter.put('/contact/:id', isAuthenticate,authorizeRoles("super_domain_admin", "super_admin"), updateContact);
+contactRouter.put('/contact/:id', isAuthenticate,authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), updateContact);
 
 // Delete a contact message
-contactRouter.delete('/contact/:id', isAuthenticate,authorizeRoles("super_domain_admin", "super_admin"), deleteContact);
+contactRouter.delete('/contact/:id', isAuthenticate,authorizeRoles("domain_lead", "super_domain_admin", "super_admin"), deleteContact);
 
 export default contactRouter;

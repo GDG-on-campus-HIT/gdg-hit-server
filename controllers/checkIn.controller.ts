@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import crypto from "crypto";
 import mongoose from "mongoose";
 import QRCode from "qrcode";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
@@ -7,12 +8,16 @@ import sendMail from "../utlis/sendMail";
 import { eventModel } from "../models/events.model";
 import { Participant } from "../models/eventregistration.model";
 import { certificateModel } from "../models/certificate.model";
+import userModel from "../models/user.model";
 import { certificateCheckUrl, certificateFileUrl, escapeHtml, formatEventDate, publicApiBase } from "../utlis/certificateRenderer";
 import { checkInPassUrl, checkInToken, parseCheckInToken } from "../utlis/checkInPass";
 
 const isObjectId = (id: unknown): id is string => typeof id === "string" && mongoose.Types.ObjectId.isValid(id);
 
-const PARTICIPANT_FIELDS = "name email classRollNo department position attendance checkedInAt event";
+const PARTICIPANT_FIELDS =
+  "name email classRollNo department position attendance checkedInAt sessionCheckIns walkIn event";
+
+type Session = { key: string; label: string };
 
 const publicParticipant = (p: any) => ({
   _id: p._id,
@@ -23,7 +28,114 @@ const publicParticipant = (p: any) => ({
   position: p.position ?? null,
   attendance: !!p.attendance,
   checkedInAt: p.checkedInAt ?? null,
+  sessionCheckIns: (p.sessionCheckIns ?? []).map((s: any) => ({ session: s.session, at: s.at })),
+  walkIn: !!p.walkIn,
 });
+
+// Per-session progress for a participant, in the event's session order
+const sessionProgress = (sessions: Session[], participant: any) => {
+  const at = new Map<string, Date>((participant?.sessionCheckIns ?? []).map((s: any) => [s.session, s.at]));
+  return sessions.map((s) => ({ key: s.key, label: s.label, checkedInAt: at.get(s.key) ?? null }));
+};
+
+const istTime = (value: Date) =>
+  new Date(value).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+
+type CheckInOutcome = { status: "checked_in" | "already"; message: string; participant: any };
+
+/**
+ * Marks a participant as checked in. Without sessions this sets attendance directly.
+ * With sessions it records the session; attendance (certificate eligibility) is set
+ * automatically once every session is attended and is never cleared here, so a lead's
+ * manual approval survives later scans.
+ */
+const recordCheckIn = async (participant: any, sessions: Session[], session?: Session): Promise<CheckInOutcome> => {
+  const id = participant._id;
+
+  if (!session) {
+    if (participant.attendance) return { status: "already", message: "Already checked in", participant };
+    const updated = await Participant.findOneAndUpdate(
+      { _id: id, attendance: { $ne: true } },
+      { $set: { attendance: true, checkedInAt: new Date() } },
+      { new: true }
+    )
+      .select(PARTICIPANT_FIELDS)
+      .lean();
+    if (updated) return { status: "checked_in", message: "Checked in", participant: updated };
+    const current = await Participant.findById(id).select(PARTICIPANT_FIELDS).lean();
+    return { status: "already", message: "Already checked in", participant: current };
+  }
+
+  let status: CheckInOutcome["status"] = "already";
+  let current: any = participant;
+  if (!(participant.sessionCheckIns ?? []).some((s: any) => s.session === session.key)) {
+    const now = new Date();
+    const updated: any = await Participant.findOneAndUpdate(
+      { _id: id, "sessionCheckIns.session": { $ne: session.key } },
+      {
+        $push: { sessionCheckIns: { session: session.key, at: now } },
+        $set: { checkedInAt: participant.checkedInAt ?? now },
+      },
+      { new: true }
+    )
+      .select(PARTICIPANT_FIELDS)
+      .lean();
+    if (updated) {
+      status = "checked_in";
+      current = updated;
+      const done = new Set((updated.sessionCheckIns ?? []).map((s: any) => s.session));
+      if (!updated.attendance && sessions.every((s) => done.has(s.key))) {
+        current = await Participant.findByIdAndUpdate(id, { $set: { attendance: true } }, { new: true })
+          .select(PARTICIPANT_FIELDS)
+          .lean();
+      }
+    } else {
+      current = await Participant.findById(id).select(PARTICIPANT_FIELDS).lean();
+    }
+  }
+
+  const progress = sessionProgress(sessions, current);
+  const attended = progress.filter((s) => s.checkedInAt).length;
+  let message: string;
+  if (status === "checked_in") {
+    message =
+      attended === sessions.length
+        ? `Checked in for ${session.label} · attended all sessions`
+        : `Checked in for ${session.label} · ${attended} of ${sessions.length} sessions`;
+  } else {
+    const at = progress.find((s) => s.key === session.key)?.checkedInAt;
+    message = `Already checked in for ${session.label}${at ? ` at ${istTime(at)}` : ""}`;
+  }
+  return { status, message, participant: current };
+};
+
+const checkInStats = async (eventId: string, session?: Session) => {
+  const [registered, present, sessionPresent] = await Promise.all([
+    Participant.countDocuments({ event: eventId }),
+    Participant.countDocuments({ event: eventId, attendance: true }),
+    session ? Participant.countDocuments({ event: eventId, "sessionCheckIns.session": session.key }) : null,
+  ]);
+  return { registered, present, ...(session ? { sessionPresent } : {}) };
+};
+
+// Resolves the session a check-in is for; null result means the request is invalid
+const resolveSession = (sessions: Session[], raw: unknown): { session?: Session } | null => {
+  if (!sessions.length) return {};
+  const session = sessions.find((s) => s.key === raw);
+  return session ? { session } : null;
+};
+
+// Links registrations made for this email (e.g. walk-ins added at the venue before the
+// person had an account) to the signed-in user, along with their certificates.
+export const claimRegistrationsByEmail = async (user: any) => {
+  const email = String(user?.email || "").toLowerCase();
+  if (!user?._id || !email) return;
+  const unclaimed = await Participant.find({ user: null, email }).select("_id").lean();
+  if (!unclaimed.length) return;
+  const ids = unclaimed.map((p) => p._id);
+  await Participant.updateMany({ _id: { $in: ids }, user: null }, { $set: { user: user._id } });
+  await certificateModel.updateMany({ participant: { $in: ids }, user: null }, { $set: { user: user._id } });
+};
 
 const qrOptions = { errorCorrectionLevel: "M" as const, margin: 2 };
 
@@ -36,8 +148,18 @@ export const checkInParticipant = CatchAsyncError(async (req: Request, res: Resp
   const { eventId } = req.params;
   if (!isObjectId(eventId)) return next(new ErrorHandler("Invalid event ID.", 400));
 
-  const { code, participantId: manualId } = req.body as { code?: unknown; participantId?: unknown };
+  const { code, participantId: manualId, session: rawSession } = req.body as {
+    code?: unknown;
+    participantId?: unknown;
+    session?: unknown;
+  };
   const participantId = manualId !== undefined ? (isObjectId(manualId) ? manualId : null) : parseCheckInToken(code);
+
+  const event: any = await eventModel.findById(eventId).select("attendanceSessions").lean();
+  if (!event) return next(new ErrorHandler("Event not found.", 404));
+  const sessions: Session[] = event.attendanceSessions ?? [];
+  const resolved = resolveSession(sessions, rawSession);
+  if (!resolved) return next(new ErrorHandler("Choose which session you're checking people in for.", 400));
 
   if (!participantId) {
     return res.status(200).json({ success: true, status: "invalid", message: "This isn't a valid GDG check-in pass." });
@@ -60,34 +182,117 @@ export const checkInParticipant = CatchAsyncError(async (req: Request, res: Resp
     });
   }
 
-  let status: "checked_in" | "already" = "already";
-  if (!participant.attendance) {
-    const updated = await Participant.findOneAndUpdate(
-      { _id: participantId, attendance: { $ne: true } },
-      { $set: { attendance: true, checkedInAt: new Date() } },
-      { new: true }
-    )
-      .select(PARTICIPANT_FIELDS)
-      .lean();
-    if (updated) {
-      participant = updated;
-      status = "checked_in";
-    } else {
-      participant = await Participant.findById(participantId).select(PARTICIPANT_FIELDS).lean();
-    }
-  }
-
-  const [registered, present] = await Promise.all([
-    Participant.countDocuments({ event: eventId }),
-    Participant.countDocuments({ event: eventId, attendance: true }),
-  ]);
+  const outcome = await recordCheckIn(participant, sessions, resolved.session);
 
   res.status(200).json({
     success: true,
-    status,
-    message: status === "checked_in" ? "Checked in" : "Already checked in",
-    participant: publicParticipant(participant),
-    stats: { registered, present },
+    status: outcome.status,
+    message: outcome.message,
+    participant: publicParticipant(outcome.participant),
+    session: resolved.session ?? null,
+    sessions: sessionProgress(sessions, outcome.participant),
+    stats: await checkInStats(eventId, resolved.session),
+  });
+});
+
+// Configure the event's check-in sessions (e.g. "First half", "After lunch")
+export const setAttendanceSessions = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
+  const { eventId } = req.params;
+  if (!isObjectId(eventId)) return next(new ErrorHandler("Invalid event ID.", 400));
+
+  const raw = (req.body as { sessions?: unknown }).sessions;
+  if (!Array.isArray(raw) || raw.length > 6) return next(new ErrorHandler("Send up to 6 sessions.", 400));
+
+  const sessions: Session[] = [];
+  for (const item of raw) {
+    const label = String((item as any)?.label ?? "").trim().slice(0, 40);
+    if (!label) return next(new ErrorHandler("Every session needs a name.", 400));
+    if (sessions.some((s) => s.label.toLowerCase() === label.toLowerCase())) {
+      return next(new ErrorHandler(`"${label}" is listed twice.`, 400));
+    }
+    const given = String((item as any)?.key ?? "");
+    const key =
+      /^[a-z0-9-]{1,40}$/.test(given) && !sessions.some((s) => s.key === given)
+        ? given
+        : `s-${crypto.randomBytes(4).toString("hex")}`;
+    sessions.push({ key, label });
+  }
+
+  const event = await eventModel
+    .findByIdAndUpdate(eventId, { $set: { attendanceSessions: sessions } }, { new: true, runValidators: true })
+    .select("attendanceSessions");
+  if (!event) return next(new ErrorHandler("Event not found.", 404));
+
+  // Approve anyone who now has every session; existing approvals are left alone
+  if (sessions.length) {
+    await Participant.updateMany(
+      { event: eventId, attendance: { $ne: true }, "sessionCheckIns.session": { $all: sessions.map((s) => s.key) } },
+      { $set: { attendance: true } }
+    );
+  }
+
+  res.status(200).json({ success: true, sessions: event.attendanceSessions, stats: await checkInStats(eventId) });
+});
+
+// Register someone at the venue who didn't sign up online, and check them in
+export const addWalkIn = CatchAsyncError(async (req: Request, res: Response, next: NextFunction) => {
+  const { eventId } = req.params;
+  if (!isObjectId(eventId)) return next(new ErrorHandler("Invalid event ID.", 400));
+
+  const body = req.body as Record<string, unknown>;
+  const text = (key: string) => String(body[key] ?? "").trim();
+  const name = text("name");
+  const email = text("email").toLowerCase();
+  const classRollNo = text("classRollNo");
+  const department = text("department");
+  const phoneNumber = text("phoneNumber").replace(/[\s-]/g, "");
+
+  if (!name || !email || !classRollNo || !department || !phoneNumber) {
+    return next(new ErrorHandler("Name, email, roll number, department and phone are all required.", 400));
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) return next(new ErrorHandler("Enter a valid email address.", 400));
+  if (!/^\+?[1-9]\d{1,14}$/.test(phoneNumber)) return next(new ErrorHandler("Enter a valid phone number.", 400));
+
+  const event: any = await eventModel.findById(eventId).select("attendanceSessions").lean();
+  if (!event) return next(new ErrorHandler("Event not found.", 404));
+  const sessions: Session[] = event.attendanceSessions ?? [];
+  const resolved = resolveSession(sessions, body.session);
+  if (!resolved) return next(new ErrorHandler("Choose which session you're checking people in for.", 400));
+
+  const account: any = await userModel.findOne({ email }).select("_id").lean();
+  const existing: any = await Participant.findOne({
+    event: eventId,
+    $or: [{ email }, ...(account ? [{ user: account._id }] : [])],
+  })
+    .select(PARTICIPANT_FIELDS)
+    .lean();
+
+  let participant = existing;
+  if (!participant) {
+    const created = await Participant.create({
+      user: account?._id ?? null,
+      event: eventId,
+      name,
+      email,
+      classRollNo,
+      department,
+      phoneNumber,
+      walkIn: true,
+    });
+    participant = await Participant.findById(created._id).select(PARTICIPANT_FIELDS).lean();
+  }
+
+  const outcome = await recordCheckIn(participant, sessions, resolved.session);
+
+  res.status(existing ? 200 : 201).json({
+    success: true,
+    created: !existing,
+    status: outcome.status,
+    message: existing ? `Already registered · ${outcome.message.toLowerCase()}` : `Walk-in added · ${outcome.message.toLowerCase()}`,
+    participant: publicParticipant(outcome.participant),
+    session: resolved.session ?? null,
+    sessions: sessionProgress(sessions, outcome.participant),
+    stats: await checkInStats(eventId, resolved.session),
   });
 });
 
@@ -140,9 +345,11 @@ export const getMyCheckInPass = CatchAsyncError(async (req: Request, res: Respon
   const { eventId } = req.params;
   if (!isObjectId(eventId)) return next(new ErrorHandler("Invalid event ID.", 400));
 
-  const participant = await Participant.findOne({ event: eventId, user: req.user?._id })
-    .select("attendance checkedInAt")
-    .lean();
+  await claimRegistrationsByEmail(req.user);
+  const [participant, event] = await Promise.all([
+    Participant.findOne({ event: eventId, user: req.user?._id }).select("attendance checkedInAt sessionCheckIns").lean(),
+    eventModel.findById(eventId).select("attendanceSessions").lean(),
+  ]);
   if (!participant) return next(new ErrorHandler("You aren't registered for this event.", 404));
 
   const token = checkInToken(String(participant._id));
@@ -153,6 +360,7 @@ export const getMyCheckInPass = CatchAsyncError(async (req: Request, res: Respon
     qrUrl: checkInQrUrl(req, token),
     checkedIn: !!participant.attendance,
     checkedInAt: participant.checkedInAt ?? null,
+    sessions: sessionProgress((event as any)?.attendanceSessions ?? [], participant),
   });
 });
 
@@ -206,15 +414,16 @@ export const checkInPassPage = CatchAsyncError(async (req: Request, res: Respons
 // For the public site: every event the logged-in user registered for, with their
 // entry pass and (once issued) certificate
 export const getMyEvents = CatchAsyncError(async (req: Request, res: Response) => {
+  await claimRegistrationsByEmail(req.user);
   const participants: any[] = await Participant.find({ user: req.user?._id })
-    .select("event attendance checkedInAt position createdAt")
+    .select("event attendance checkedInAt sessionCheckIns position createdAt")
     .sort({ createdAt: -1 })
     .lean();
 
   const [events, certificates] = await Promise.all([
     eventModel
       .find({ _id: { $in: participants.map((p) => p.event) } })
-      .select("name eventDate eventTime venue eventBanner poster is_upcoming")
+      .select("name eventDate eventTime venue eventBanner poster is_upcoming attendanceSessions")
       .lean(),
     certificateModel
       .find({ participant: { $in: participants.map((p) => p._id) } })
@@ -235,6 +444,7 @@ export const getMyEvents = CatchAsyncError(async (req: Request, res: Response) =
         registeredAt: p.createdAt,
         attendance: !!p.attendance,
         checkedInAt: p.checkedInAt ?? null,
+        sessions: sessionProgress(event.attendanceSessions ?? [], p),
         position: p.position ?? null,
         event: {
           _id: event._id,

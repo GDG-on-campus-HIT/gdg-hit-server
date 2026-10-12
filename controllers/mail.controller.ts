@@ -5,6 +5,7 @@ import ErrorHandler from "../utlis/ErrorHandler";
 import sendMail from "../utlis/sendMail";
 import { certificateModel } from "../models/certificate.model";
 import { mailModel } from "../models/mail.model";
+import { siteHost, siteUrl } from "../utlis/site";
 
 const escapeHtml = (value: string): string =>
   String(value)
@@ -13,6 +14,126 @@ const escapeHtml = (value: string): string =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+
+const OFFICIAL_EMAIL = "gdgoncampushit@gmail.com";
+
+const certificateMailTemplate = ({
+  participantName,
+  eventName,
+  eventDate,
+}: {
+  participantName: string;
+  eventName: string;
+  eventDate?: string;
+}): string => {
+  const name = escapeHtml(participantName || "there");
+  const event = escapeHtml(eventName || "our event");
+  const heldOn = eventDate ? ` held on <strong>${escapeHtml(eventDate)}</strong>` : "";
+
+  return `<!DOCTYPE html>
+  <html>
+  <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Your certificate is ready</title>
+      <style>
+          body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 0;
+              color: #333;
+          }
+          .container {
+              max-width: 600px;
+              margin: 30px auto;
+              background-color: #ffffff;
+              border-radius: 12px;
+              box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+              overflow: hidden;
+          }
+          .accent {
+              height: 4px;
+              background: linear-gradient(to right, #4285F4 0 25%, #EA4335 25% 50%, #FBBC05 50% 75%, #34A853 75% 100%);
+          }
+          .logo img {
+              width: 55%;
+              max-width: 280px;
+              height: auto;
+              display: block;
+              margin: 28px auto 8px;
+          }
+          .content {
+              padding: 10px 30px 30px;
+              line-height: 1.7;
+          }
+          .content p {
+              margin: 15px 0;
+          }
+          .button {
+              display: inline-block;
+              margin: 20px 0;
+              padding: 12px 32px;
+              border-radius: 9999px;
+              background: linear-gradient(to bottom left, #2563eb, #1e3a8a);
+              color: #ffffff !important;
+              text-decoration: none;
+              font-weight: 500;
+          }
+          .footer {
+              background-color: #f8f9fa;
+              padding: 20px;
+              text-align: center;
+              font-size: 12px;
+              color: #555;
+          }
+          .footer a,
+          .content a.link {
+              color: #1e3a8a;
+              text-decoration: none;
+          }
+          .footer a:hover,
+          .content a.link:hover {
+              text-decoration: underline;
+          }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <div class="accent"></div>
+          <div class="logo">
+              <img src="${siteUrl}/assets/logo-gdg.png" alt="GDG on Campus HIT">
+          </div>
+          <div class="content">
+              <p><strong>Dear ${name},</strong></p>
+              <p>Thank you for attending <strong>${event}</strong>${heldOn}. Your participation certificate is now ready to download.</p>
+              <p>To get your certificate:</p>
+              <ol>
+                  <li>Visit <a class="link" href="${siteUrl}">${siteHost}</a> and log in with your registered account.</li>
+                  <li>Open your dashboard and find the certificate under <strong>Certificates</strong>.</li>
+              </ol>
+              <center>
+                  <a href="${siteUrl}/dashboard" class="button">Go to your dashboard</a>
+              </center>
+              <p>If you can't find your certificate or run into any issues, write to us at <a class="link" href="mailto:${OFFICIAL_EMAIL}">${OFFICIAL_EMAIL}</a>.</p>
+              <p>We loved having you at <strong>${event}</strong> and look forward to seeing you at our next event!</p>
+          </div>
+          <div class="footer">
+              <p>Best regards,</p>
+              <p><strong>GDG on Campus HIT</strong><br>Haldia Institute of Technology</p>
+              <p>
+                  <a href="https://www.linkedin.com/company/gdgoncampushit/" target="_blank">LinkedIn</a>
+                  &nbsp;&middot;&nbsp;
+                  <a href="https://www.instagram.com/gdg_hit/" target="_blank">Instagram</a>
+                  &nbsp;&middot;&nbsp;
+                  <a href="${siteUrl}" target="_blank">${siteHost}</a>
+              </p>
+              <p>&copy; ${new Date().getFullYear()} GDG on Campus HIT. All rights reserved.</p>
+          </div>
+      </div>
+  </body>
+  </html>`;
+};
 
 export const sendCertificateMail = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -39,129 +160,11 @@ export const sendCertificateMail = CatchAsyncError(
       const eventName = registration.event?.name;
       const eventDate = registration.event?.eventDate;
 
-      // Prepare the data to be used in the email template
-      const data = {
+      const html = certificateMailTemplate({
         participantName: name,
         eventName,
         eventDate,
-      };
-
-      // Render the HTML content directly using ejs
-      const html = `<!DOCTYPE html>
-      <html>
-      <head>
-          <title>Certificate Available</title>
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-          <style>
-              /* Styles as provided in your template */
-              body {
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                  background-color: #f4f4f4;
-                  margin: 0;
-                  padding: 0;
-                  color: #333;
-              }
-              .container {
-                  max-width: 700px;
-                  margin: 30px auto;
-                  background-color: #ffffff;
-                  border-radius: 12px;
-                  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-                  overflow: hidden;
-              }
-              .header {
-                  padding: 10px;
-                  text-align: center;
-              }
-              .content {
-                  padding: 30px;
-                  line-height: 1.7;
-              }
-              .content p {
-                  margin: 15px 0;
-              }
-              .button {
-                  display: inline-block;
-                  margin: 25px 0;
-                  padding: 12px 24px;
-                  background-color: #FF6026;
-                  color: #ffffff;
-                  text-decoration: none;
-                  border-radius: 5px;
-                  font-weight: 500;
-              }
-              .button:hover {
-                  background-color: #df4811;
-              }
-              .footer {
-                  background-color: #f0f0f0;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #555;
-              }
-              .footer a {
-                  color: #1e3a8a;
-                  text-decoration: none;
-              }
-              .footer a:hover {
-                  text-decoration: underline;
-              }
-              .logo {
-                width: 100%;
-                  display: flex;
-                  justify-content: center;
-              }
-              .logo img {
-                  width: 100%;
-              }
-              .social-links {
-                  margin-top: 15px;
-              }
-              .social-links a {
-                  margin: 0 5px;
-                  text-decoration: none;
-                  color: #555;
-                  font-size: 24px;
-              }
-              .social-links a:hover {
-                  color: #FF6026;
-              }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <div class="header">
-                  <div class="logo">
-                      <img src="https://dsch.site/images/dsch-banner.png" alt="DSCH">
-                  </div>
-              </div>
-              <div class="content">
-                  <strong>Dear ${data.participantName},</strong>
-                  <p>We hope this message finds you well! Thank you for attending <strong>${data.eventName}</strong> held on <strong>${data.eventDate}</strong>. We are excited to let you know that your participation certificate is now available for download.</p>
-                  <p>To access your certificate, please follow these simple steps:</p>
-                  <ol>
-                      <li>Visit our website: <a href="https://dsch.site" style="color: #1e3a8a; text-decoration: underline;">https://dsch.site</a></li>
-                      <li>Log in using your registered credentials.</li>
-                      <li>Navigate to your profile section to download your certificate.</li>
-                  </ol>
-                  <a href="https://dsch.site/profile" class="button">Visit Your Profile</a>
-                  <p>If you experience any issues or cannot find your certificate, please contact us at <a href="mailto:datascienceclubhit@gmail.com" style="color: #1e3a8a;">datascienceclubhit@gmail.com</a> or reach out through our support team on the website.</p>
-                  <p>We appreciate your enthusiasm and active participation in <strong>${data.eventName}</strong>. We look forward to welcoming you to future events!</p>
-              </div>
-              <div class="footer">
-                  <p>Best regards,</p>
-                  <p><strong>Data Science Club HIT</strong> <br>Haldia Institute of Technology</p>
-                  <p>&copy; 2024 Data Science Club HIT. All rights reserved.</p>
-                  <div class="social-links">
-                      <a href="https://www.linkedin.com/company/datascienceclubhit/" target="_blank"><i class="fab fa-linkedin"></i></a>
-                      <a href="https://www.instagram.com/datascienceclubhit?igsh=MTV6MGY2a3piMXI0ZA%3D%3D" target="_blank"><i class="fab fa-instagram-square"></i></a>
-                  </div>
-              </div>
-          </div>
-      </body>
-      </html>
-      `;
+      });
 
       // Send the email using the sendMail utility
       try {
@@ -244,15 +247,11 @@ export const sendBulkCertificateMails = CatchAsyncError(
           const eventName = registration.event?.name;
           const eventDate = registration.event?.eventDate;
 
-          // Prepare the data for the email template
-          const data = {
+          const html = certificateMailTemplate({
             participantName: name,
             eventName,
             eventDate,
-          };
-
-          // Render the HTML content directly using ejs
-          const html = ``;
+          });
 
           // Send the email using the sendMail utility
           await sendMail({
@@ -413,7 +412,7 @@ export const sendPromotionMail = CatchAsyncError(
         <body>
             <div class="email-container">
                 <div class="logo">
-                    <img src="https://gdghit.site/assets/logo-gdg.png" alt="GDG HIT">
+                    <img src="${siteUrl}/assets/logo-gdg.png" alt="GDG HIT">
                 </div>
         
                 <div class="content">
@@ -423,20 +422,20 @@ export const sendPromotionMail = CatchAsyncError(
                     Ready to be part of something BIGGER? The wait is over - <strong>GDG on campus HIT</strong> is opening its doors for brilliant minds and passionate talents to join our powerhouse team! If you live and breathe tech, creativity, or community building, this is YOUR MOMENT to shine! 
                     </p>
                     <center>
-                        <a href="https://gdghit.site" class="button">Apply Now</a>
+                        <a href="${siteUrl}" class="button">Apply Now</a>
                     </center>
                 </div>
         
                 <div class="image-content">
-                    <img src="https://gdghit.site/img/recruitment-og-image.jpeg" alt="GDG HIT Recruitment">
+                    <img src="${siteUrl}/img/recruitment-og-image.jpeg" alt="GDG HIT Recruitment">
                 </div>
         
                 <div class="footer">
                     <p>Best regards,</p>
                     <p><strong>GDG on campus - HIT</strong></p>
                     <p>© 2025 GDG on campus HIT. All rights reserved.</p>
-                    <p>For more details, visit <a href="https://gdghit.site" class="website-link">gdghit.site</a>.</p>
-                    <p class="unsubscribe">No longer interested? <a href="https://gdghit.site/contact-us">Unsubscribe here</a>.</p>
+                    <p>For more details, visit <a href="${siteUrl}" class="website-link">${siteHost}</a>.</p>
+                    <p class="unsubscribe">No longer interested? <a href="${siteUrl}/contact-us">Unsubscribe here</a>.</p>
                     <p class="mandatory">You have received this mandatory email announcement to update you about important information related to GDG HIT.</p>
                 </div>
             </div>

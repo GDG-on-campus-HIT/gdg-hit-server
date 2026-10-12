@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import { CatchAsyncError } from "../middleware/CatchAsyncError";
 import { certificateCheckUrl, certificateFileUrl } from "../utlis/certificateRenderer";
+import { claimRegistrationsByEmail } from "./checkIn.controller";
 import ErrorHandler from "../utlis/ErrorHandler";
 import { eventModel, eventRegistrationModel } from "../models/events.model";
 import userModel from "../models/user.model";
 import cloudinary from "cloudinary";
+import imagekit from "../utlis/imageKit";
 import { certificateModel } from "../models/certificate.model";
 import { Readable } from "stream";
 import { ObjectId, Schema } from "mongoose";
@@ -256,9 +258,13 @@ export const deleteCertificate = CatchAsyncError(
       }
 
       if (certificate.certificate?.public_id) {
-        await cloudinary.v2.uploader
-          .destroy(certificate.certificate.public_id)
-          .catch((error) => console.log("Error deleting certificate file:", error));
+        // Generated certificates are stored on ImageKit; legacy uploads on Cloudinary
+        const removal = certificate.participant
+          ? imagekit.deleteFile(certificate.certificate.public_id)
+          : cloudinary.v2.uploader.destroy(certificate.certificate.public_id);
+        await Promise.resolve(removal).catch((error: unknown) =>
+          console.log("Error deleting certificate file:", error)
+        );
       }
 
       await eventRegistrationModel.updateOne(
@@ -306,6 +312,7 @@ export const getAllCertificates = CatchAsyncError(
 
 export const getMyCertificates = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
+    await claimRegistrationsByEmail(req.user);
     const certificates: any[] = await certificateModel
       .find({ user: req.user?._id })
       .sort({ createdAt: -1 })

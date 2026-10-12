@@ -1,7 +1,7 @@
 import express from 'express';
 import { addPriorKnowledge, checkIfRegistered, getParticipant, getPriorKnowledge, markAttendanceFromList, registerParticipant, setParticipantAttendance, setParticipantPosition } from '../controllers/eventregistration.controller';
 import { authorizeRoles, isAuthenticate } from '../middleware/auth';
-import { checkInParticipant, checkInPassPage, checkInQrImage, getMyCheckInPass, getMyEvents, sendCheckInPass } from '../controllers/checkIn.controller';
+import { addWalkIn, checkInParticipant, checkInPassPage, checkInQrImage, getMyCheckInPass, getMyEvents, sendCheckInPass, setAttendanceSessions } from '../controllers/checkIn.controller';
 
 const eventRegistration = express.Router();
 
@@ -57,6 +57,20 @@ eventRegistration.post(
     isAuthenticate,
     authorizeRoles(...CHECK_IN_STAFF),
     checkInParticipant
+);
+
+eventRegistration.post(
+    "/events/:eventId/walk-in",
+    isAuthenticate,
+    authorizeRoles(...CHECK_IN_STAFF),
+    addWalkIn
+);
+
+eventRegistration.put(
+    "/events/:eventId/attendance-sessions",
+    isAuthenticate,
+    authorizeRoles(...PARTICIPANT_MANAGERS),
+    setAttendanceSessions
 );
 
 eventRegistration.post(

@@ -51,9 +51,10 @@ const PriorKnowledgeSchema: Schema = new Schema(
 
 // Interface for Participant document
 interface IParticipant extends Document {
-  user: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId | null;
   event: mongoose.Types.ObjectId;
   name: string;
+  walkIn: boolean;
   classRollNo: string;
   department: string;
   phoneNumber: string;
@@ -61,6 +62,7 @@ interface IParticipant extends Document {
   attendance: boolean;
   position?: number | null;
   checkedInAt?: Date | null;
+  sessionCheckIns: Array<{ session: string; at: Date }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,10 +70,11 @@ interface IParticipant extends Document {
 // Participant Schema
 const ParticipantSchema: Schema = new Schema(
   {
+    // Null for walk-ins without an account; linked by email once they sign in
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      default: null,
     },
     event: {
       type: Schema.Types.ObjectId,
@@ -82,6 +85,11 @@ const ParticipantSchema: Schema = new Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    // Added at the venue by a member instead of registering online
+    walkIn: {
+      type: Boolean,
+      default: false,
     },
     classRollNo: {
       type: String,
@@ -122,6 +130,11 @@ const ParticipantSchema: Schema = new Schema(
       type: Date,
       default: null,
     },
+    // One entry per attendance session (Event.attendanceSessions) the participant was scanned into
+    sessionCheckIns: {
+      type: [{ _id: false, session: { type: String, required: true }, at: { type: Date, required: true } }],
+      default: [],
+    },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt
@@ -129,6 +142,7 @@ const ParticipantSchema: Schema = new Schema(
 );
 
 ParticipantSchema.index({ event: 1 });
+ParticipantSchema.index({ email: 1 });
 
 
 // Create and export the PriorKnowledge model

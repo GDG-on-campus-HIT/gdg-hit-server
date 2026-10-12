@@ -18,6 +18,7 @@ import emailVerificationModel from "../models/emailVerification";
 import crypto from "crypto";
 import { asString } from "../utlis/query";
 import { cacheUserSession, clearUserSession } from "../utlis/session";
+import { siteUrl } from "../utlis/site";
 
 const MAX_ACTIVATION_ATTEMPTS = 5;
 
@@ -451,7 +452,7 @@ export const sendPasswordResetEmail = CatchAsyncError(
       await user.save();
 
       // Generate reset link
-      const resetLink = `${process.env.FRONTEND_HOST}/account/reset-password-confirm/${user._id}/${token}`;
+      const resetLink = `${siteUrl}/account/reset-password-confirm/${user._id}/${token}`;
 
       const data = { user: { name: user.name }, resetLink };
 

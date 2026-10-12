@@ -13,7 +13,7 @@ import {
 
 const memberRouter = express.Router();
 
-const CONTENT_MANAGERS = ["super_domain_admin", "super_admin"];
+const CONTENT_MANAGERS = ["domain_lead", "super_domain_admin", "super_admin"];
 
 // Get all members including inactive (Admin only)
 memberRouter.get(

@@ -122,7 +122,7 @@ export const deleteReview = CatchAsyncError(
       }
 
       // Owner or Admin/Superadmin can delete
-      const isAdmin = ["super_domain_admin", "super_admin"].includes(user.role || "");
+      const isAdmin = ["domain_lead", "super_domain_admin", "super_admin"].includes(user.role || "");
       const isOwner = review.user.toString() === user._id.toString();
 
       if (!isAdmin && !isOwner) {

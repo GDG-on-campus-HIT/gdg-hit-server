@@ -8,7 +8,7 @@ import imagekit from "../utlis/imageKit";
 import fs from "fs";
 import { Types } from "mongoose";
 
-const MODERATOR_ROLES = ["super_domain_admin", "super_admin"];
+const MODERATOR_ROLES = ["domain_lead", "super_domain_admin", "super_admin"];
 
 const isModerator = (req: Request) =>
   MODERATOR_ROLES.includes((req.user as any)?.role || "");

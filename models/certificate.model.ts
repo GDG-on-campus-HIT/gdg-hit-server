@@ -2,7 +2,7 @@ import mongoose, { Document, Model, ObjectId, Schema } from "mongoose";
 
 interface ICertificate extends Document {
   event: ObjectId;
-  user: ObjectId;
+  user: ObjectId | null;
   registration?: ObjectId;
   participant?: ObjectId;
   kind: "participation" | "winner";
@@ -10,6 +10,7 @@ interface ICertificate extends Document {
   certificate: {
     public_id: string;
     url: string;
+    rendered_at?: Date | null;
   };
   download: number;
   mail_sent: boolean;
@@ -23,10 +24,11 @@ const certificateSchema = new Schema<ICertificate>(
       type: Schema.Types.ObjectId,
       ref: "Event",
     },
+    // Null for walk-ins who haven't created an account yet
     user: {
-      required: true,
       type: Schema.Types.ObjectId,
       ref: "User",
+      default: null,
     },
     // Legacy certificates point at EventRegistration; new ones at Participant
     registration: {
@@ -51,6 +53,8 @@ const certificateSchema = new Schema<ICertificate>(
     certificate: {
       public_id: String,
       url: String,
+      // When the PDF stored on ImageKit was rendered; unset means it must be (re)generated
+      rendered_at: { type: Date, default: null },
     },
     download: {
       required: true,

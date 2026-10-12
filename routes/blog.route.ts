@@ -63,7 +63,7 @@ blogRouter.get(
 blogRouter.patch(
   "/admin/unlistBlog/:id",
   isAuthenticate,
-  authorizeRoles("super_domain_admin", "super_admin"),
+  authorizeRoles("domain_lead", "super_domain_admin", "super_admin"),
   adminSoftDeleteBlog
 );
 
